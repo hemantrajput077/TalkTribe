@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# SQLite
+*.db
+
+# Virtual Environment
+.venv/
+
+# Environment
+.env
+
+# Pytest
+.pytest_cache/
+
+# VS Code
+.vscode/
