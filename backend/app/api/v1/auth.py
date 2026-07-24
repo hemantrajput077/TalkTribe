@@ -1,28 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from passlib.context import CryptContext
-
-from app.schemas.auth import CreateUser, RegisterResponse
-from app.database import get_db
+from fastapi import APIRouter, Depends , status
+from app.schemas.auth import CreateUser  , RegisterResponse , UserLogin
+from app.services.auth_service import AuthService
+from app.db.dependencies import get_db
+from app.db.session import SessionLocal
 from app.models.auth import User
-
+from fastapi import HTTPException  
+from sqlalchemy import select
+from app.services.auth_service import AuthService , auth_service_dependency
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def user_register(user_data: CreateUser, db: AsyncSession = Depends(get_db)):
-    """
-    Register a new user.
+@router.get('/user_data')
+def user_data(db: SessionLocal = Depends(get_db)):
+    user = db.execute(select(User)).scalars().all()
+    print(user)
+    if not user:
+        return {"message": "No user found"}
+    return user
 
-    Validates that username and email are unique, hashes password, and creates user.
-    """
-    # Check if username exists
-    result = await db.execute(select(User).filter(User.username == user_data.username))
-    if result.scalar_one_or_none():
+@router.post("/register", response_model=RegisterResponse,
+    status_code=201)
+def user_register( user_data:CreateUser, db: SessionLocal = Depends(get_db) , auth_service:AuthService = Depends(auth_service_dependency) ): 
+    if  auth_service.check_username_exist(user_data.username):
         raise HTTPException(status_code=400, detail="Username already exists")
 
     # Check if email exists
@@ -45,6 +47,8 @@ async def user_register(user_data: CreateUser, db: AsyncSession = Depends(get_db
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    
 
     return user
 
@@ -73,3 +77,12 @@ async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
         "message": "User deleted successfully"
     }
      
+@router.post("/login")
+def user_login( data:UserLogin , db : SessionLocal = Depends(get_db) , auth_service: AuthService = Depends(auth_service_dependency)):
+    if not auth_service.check_username_exist(data.username):
+        raise HTTPException(status_code=400, detail="Invlaid username")
+
+    if not auth_service.check_password_exist(data.password):
+        raise  HTTPException(status_code=400, detail="Invlaid password")
+    
+    return {"Login successfully"}
