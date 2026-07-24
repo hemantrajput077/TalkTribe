@@ -26,3 +26,4 @@ class User(Base):
             return self.id == other.id
         return False
 
+
