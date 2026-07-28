@@ -8,15 +8,11 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry
+# Copy dependency files and README (needed by pyproject.toml)
+COPY pyproject.toml README.md ./
 
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install dependencies (without dev dependencies for production)
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root --only main
+# Install dependencies
+RUN pip install --no-cache-dir -e .
 
 # Copy application
 COPY . .

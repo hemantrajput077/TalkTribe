@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.api.v1 import register
 
 """
 Main FastAPI application entry point.
@@ -31,6 +32,9 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allow all headers
 )
+
+# Register routers
+app.include_router(register.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
