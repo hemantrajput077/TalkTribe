@@ -1,9 +1,11 @@
 """
-Password hashing using passlib (bcrypt) — already installed via passlib[bcrypt].
+Password hashing using pwdlib (bcrypt) — modern replacement for passlib.
+pwdlib is fully compatible with latest bcrypt versions.
 """
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_pwd_context = PasswordHash([BcryptHasher()])
 
 
 def hash_password(password: str) -> str:

@@ -98,7 +98,8 @@ class RegisterResponse(BaseModel):
     email: EmailStr
     is_active: bool
     created_at: datetime
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
 
 
 class UserLogin(BaseModel):
