@@ -9,7 +9,6 @@ from pydantic import (
 from datetime import datetime
 
 
-
 class CreateUser(BaseModel):
     model_config = ConfigDict(
         extra="forbid",          # Reject unknown fields
@@ -100,3 +99,43 @@ class RegisterResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
+
+
+
+class UserLogin(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True
+    )
+
+    username: str = Field(
+        ...,
+        min_length=3,
+        max_length=30,
+        pattern=r"^[a-zA-Z0-9_]+$",
+        description="Username can contain letters, numbers and underscores only."
+    )
+
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="User password."
+    )
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        reserved = {
+            "admin",
+            "root",
+            "system",
+            "support",
+            "superuser"
+        }
+
+        if value.lower() in reserved:
+            raise ValueError("Username is reserved.")
+
+        return value
+ 

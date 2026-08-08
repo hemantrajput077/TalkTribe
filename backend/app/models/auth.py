@@ -1,29 +1,37 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from app.db.base import Base
+from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
 
 
 class User(Base):
     __tablename__ = "users"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(String, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(30), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    password: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
-    updated_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
-    
-    def __repr__(self):
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now()
+    )
+
+    refresh_tokens = relationship(
+        "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
 
-    def __str__(self):
-        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
+    def __str__(self) -> str:
+        return self.__repr__()
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, User):
             return self.id == other.id
         return False
-
-
