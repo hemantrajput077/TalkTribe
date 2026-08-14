@@ -1,25 +1,23 @@
 """
-Sync SQLAlchemy engine and session factory.
+Async SQLAlchemy engine — used only by app.db.session for SessionLocal re-export.
 
-Uses psycopg2 (sync) driver for PostgreSQL.
-DATABASE_URL format: postgresql://user:password@host:port/dbname
+The primary async session factory (get_db dependency) lives in app/database.py.
 """
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.core.config import settings
 
-engine = create_engine(
+engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True,           # Set to False in production
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=10,
-    max_overflow=20,
+    echo=True,
+    pool_pre_ping=True,
 )
 
-SessionLocal = sessionmaker(
+# Async session factory — correct pairing: AsyncEngine + async_sessionmaker
+SessionLocal = async_sessionmaker(
     bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
     autocommit=False,
     autoflush=False,
 )

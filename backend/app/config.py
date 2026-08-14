@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # OTP Configuration
+    OTP_LENGTH: int = 6
+    OTP_EXPIRE_MINUTES: int = 5
+
+    # SMTP Configuration for Email
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "TalkTribe"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

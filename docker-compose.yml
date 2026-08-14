@@ -4,14 +4,15 @@ services:
     container_name: talktribe_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-talktribe}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      POSTGRES_DB: ${POSTGRES_DB:-talktribe_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root}
+      POSTGRES_DB: ${POSTGRES_DB:-talktribe}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
+      # this mean the 5433(localhost) is window port and docker port is on the 5432(postgres)
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-talktribe}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-talktribe} -d ${POSTGRES_DB:-talktribe}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,7 +46,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-talktribe}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-talktribe_db}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-talktribe}:${POSTGRES_PASSWORD:-root}@postgres:5432/${POSTGRES_DB:-talktribe}
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_secret_key_change_in_production}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}

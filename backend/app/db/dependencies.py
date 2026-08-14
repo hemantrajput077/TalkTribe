@@ -1,31 +1,10 @@
 """
-FastAPI dependency that provides a sync SQLAlchemy Session.
+Re-exports the async get_db dependency from app.database.
 
-Usage in routes:
-    from app.db.dependencies import get_db
-    from app.db.session import SessionLocal
-
-    def some_route(db: SessionLocal = Depends(get_db)):
-        ...
+Any module that still imports `from app.db.dependencies import get_db`
+continues to work without changes.
 """
 
-from typing import Generator
+from app.database import get_db
 
-from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal
-
-
-def get_db() -> Generator[Session, None, None]:
-    """
-    Yields a database session and ensures it is closed after the request.
-    Rolls back automatically on unhandled exceptions.
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+__all__ = ["get_db"]

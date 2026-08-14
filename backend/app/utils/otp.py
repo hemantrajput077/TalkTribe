@@ -1,19 +1,11 @@
-import random
-import string
+import secrets
 
 
 def generate_otp(length: int = 6) -> str:
     """
-    Generate a random numeric OTP.
+    Generate a cryptographically secure random numeric OTP.
 
-    Args:
-        length: Number of digits in OTP (default: 6)
-
-    Returns:
-        String of random digits
-
-    Example:
-        >>> generate_otp(6)
-        "123456"
+    Uses secrets.randbelow() (OS-level CSPRNG) instead of random.choices()
+    which is predictable and unsuitable for security-sensitive codes.
     """
-    return ''.join(random.choices(string.digits, k=length))
+    return ''.join(str(secrets.randbelow(10)) for _ in range(length))
