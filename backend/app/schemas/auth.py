@@ -97,6 +97,7 @@ class RegisterResponse(BaseModel):
     full_name: str | None = None
     email: EmailStr
     is_active: bool
+    is_verified: bool
     created_at: datetime
 
 

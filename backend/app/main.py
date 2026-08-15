@@ -13,16 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 
-from app.db.base import Base
-from app.db.database import engine
-
-# Import all models so SQLAlchemy registers them before create_all
-from app.models.auth import User  # noqa: F401
-from app.models.refresh_token import RefreshToken  # noqa: F401
-
 from app.routers import router as api_router
-
-Base.metadata.create_all(bind=engine)
 
 # Create FastAPI app instance
 app = FastAPI(

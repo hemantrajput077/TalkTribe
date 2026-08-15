@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import declarative_base
 from app.config import settings
+from app.db.base import Base  # single Base shared by all models and Alembic
 
 """
 Database configuration and session management.
@@ -28,10 +28,6 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
-
-# Base class for all ORM models
-Base = declarative_base()
-
 
 # Dependency for FastAPI routes
 async def get_db() -> AsyncSession:
