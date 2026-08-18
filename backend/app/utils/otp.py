@@ -9,4 +9,3 @@ def generate_otp(length: int = 6) -> str:
     which is predictable and unsuitable for security-sensitive codes.
     """
     return "".join(str(secrets.randbelow(10)) for _ in range(length))
-

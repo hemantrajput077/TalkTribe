@@ -83,7 +83,7 @@ class AuthService:
         # user-enumeration via response timing.
         dummy_hash = "$2b$12$notarealhashjustpadding....................."  # intentional dummy for constant-time compare
         stored_hash = user.password if user else dummy_hash
-        
+
         if not verify_password(password, stored_hash) or user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
