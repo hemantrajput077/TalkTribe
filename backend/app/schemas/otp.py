@@ -7,13 +7,14 @@ class VerifyEmailRequest(BaseModel):
 
     User provides their email and the OTP they received.
     """
+
     email: EmailStr
     otp: str = Field(
         ...,
         min_length=6,
         max_length=6,
         pattern=r"^\d{6}$",
-        description="6-digit OTP received via email"
+        description="6-digit OTP received via email",
     )
 
 
@@ -23,6 +24,7 @@ class ResendOTPRequest(BaseModel):
 
     User provides only their email to get a new OTP.
     """
+
     email: EmailStr
 
 
@@ -30,4 +32,5 @@ class OTPResponse(BaseModel):
     """
     Generic response for OTP-related operations.
     """
+
     message: str

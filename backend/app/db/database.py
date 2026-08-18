@@ -3,7 +3,8 @@ Async SQLAlchemy engine — used only by app.db.session for SessionLocal re-expo
 
 The primary async session factory (get_db dependency) lives in app/database.py.
 """
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 

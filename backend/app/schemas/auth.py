@@ -1,18 +1,12 @@
-from typing import Optional
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    Field,
-    ConfigDict,
-    field_validator
-)
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class CreateUser(BaseModel):
     model_config = ConfigDict(
-        extra="forbid",          # Reject unknown fields
-        str_strip_whitespace=True
+        extra="forbid",  # Reject unknown fields
+        str_strip_whitespace=True,
     )
 
     username: str = Field(
@@ -20,34 +14,19 @@ class CreateUser(BaseModel):
         min_length=3,
         max_length=30,
         pattern=r"^[a-zA-Z0-9_]+$",
-        description="Username can contain letters, numbers and underscores only."
+        description="Username can contain letters, numbers and underscores only.",
     )
 
     email: EmailStr
 
-    password: str = Field(
-        ...,
-        min_length=8,
-        max_length=128,
-        description="Password must be strong."
-    )
+    password: str = Field(..., min_length=8, max_length=128, description="Password must be strong.")
 
-    full_name: Optional[str] = Field(
-        default=None,
-        min_length=2,
-        max_length=100
-    )
+    full_name: str | None = Field(default=None, min_length=2, max_length=100)
 
     @field_validator("username")
     @classmethod
     def validate_username(cls, value: str) -> str:
-        if value.lower() in {
-            "admin",
-            "root",
-            "system",
-            "support",
-            "superuser"
-        }:
+        if value.lower() in {"admin", "root", "system", "support", "superuser"}:
             raise ValueError("Username is reserved.")
 
         return value
@@ -78,16 +57,15 @@ class CreateUser(BaseModel):
 
     @field_validator("full_name")
     @classmethod
-    def validate_full_name(cls, value: Optional[str]) -> Optional[str]:
+    def validate_full_name(cls, value: str | None) -> str | None:
         if value is None:
             return value
 
         if not value.replace(" ", "").isalpha():
-            raise ValueError(
-                "Full name should contain only alphabetic characters."
-            )
+            raise ValueError("Full name should contain only alphabetic characters.")
 
         return value.title()
+
 
 class RegisterResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -101,42 +79,25 @@ class RegisterResponse(BaseModel):
     created_at: datetime
 
 
-
-
 class UserLogin(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        str_strip_whitespace=True
-    )
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     username: str = Field(
         ...,
         min_length=3,
         max_length=30,
         pattern=r"^[a-zA-Z0-9_]+$",
-        description="Username can contain letters, numbers and underscores only."
+        description="Username can contain letters, numbers and underscores only.",
     )
 
-    password: str = Field(
-        ...,
-        min_length=8,
-        max_length=128,
-        description="User password."
-    )
+    password: str = Field(..., min_length=8, max_length=128, description="User password.")
 
     @field_validator("username")
     @classmethod
     def validate_username(cls, value: str) -> str:
-        reserved = {
-            "admin",
-            "root",
-            "system",
-            "support",
-            "superuser"
-        }
+        reserved = {"admin", "root", "system", "support", "superuser"}
 
         if value.lower() in reserved:
             raise ValueError("Username is reserved.")
 
         return value
- 

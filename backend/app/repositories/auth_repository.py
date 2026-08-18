@@ -11,10 +11,10 @@ Responsibilities:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
 
 from app.models.refresh_token import RefreshToken
 
@@ -69,18 +69,16 @@ class AuthRepository:
 
     async def delete_expired_tokens(self) -> int:
         """Hard-delete expired tokens. Call from a background task."""
-        now = datetime.now(timezone.utc)
-        result = await self.db.execute(
-            delete(RefreshToken).where(RefreshToken.expires_at < now)
-        )
+        now = datetime.now(UTC)
+        result = await self.db.execute(delete(RefreshToken).where(RefreshToken.expires_at < now))
         await self.db.commit()
-        return result.rowcount  # type: ignore[return-value]
+        return result.rowcount  # type: ignore[attr-defined]
 
     # ── Read ─────────────────────────────────────────────────────────────────
 
     async def get_valid_token(self, token: str) -> RefreshToken | None:
         """Return the RefreshToken only if it exists, is not revoked, and not expired."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.db.execute(
             select(RefreshToken).where(
                 RefreshToken.token == token,
@@ -93,7 +91,5 @@ class AuthRepository:
     # ── Private ──────────────────────────────────────────────────────────────
 
     async def _get_by_token(self, token: str) -> RefreshToken | None:
-        result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token == token)
-        )
+        result = await self.db.execute(select(RefreshToken).where(RefreshToken.token == token))
         return result.scalar_one_or_none()

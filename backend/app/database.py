@@ -1,6 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from app.config import settings
-from app.db.base import Base  # single Base shared by all models and Alembic
 
 """
 Database configuration and session management.
@@ -29,8 +31,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+
 # Dependency for FastAPI routes
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that provides a database session to route handlers.
 
