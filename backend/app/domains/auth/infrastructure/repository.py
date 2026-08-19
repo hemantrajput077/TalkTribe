@@ -23,8 +23,6 @@ class AuthRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    # ── Write ────────────────────────────────────────────────────────────────
-
     async def save_refresh_token(
         self,
         user_id: int,
@@ -43,7 +41,6 @@ class AuthRepository:
         return record
 
     async def revoke_token(self, token: str) -> bool:
-        """Mark a single refresh token as revoked. Returns True if found."""
         record = await self._get_by_token(token)
         if record is None:
             return False
@@ -52,7 +49,6 @@ class AuthRepository:
         return True
 
     async def revoke_all_user_tokens(self, user_id: int) -> int:
-        """Revoke every active refresh token for a user. Returns count revoked."""
         result = await self.db.execute(
             select(RefreshToken).where(
                 RefreshToken.user_id == user_id,
@@ -60,24 +56,20 @@ class AuthRepository:
             )
         )
         records = result.scalars().all()
-
         for r in records:
             r.is_revoked = True
-
         await self.db.commit()
         return len(records)
 
     async def delete_expired_tokens(self) -> int:
-        """Hard-delete expired tokens. Call from a background task."""
         now = datetime.now(UTC)
-        result = await self.db.execute(delete(RefreshToken).where(RefreshToken.expires_at < now))
+        result = await self.db.execute(
+            delete(RefreshToken).where(RefreshToken.expires_at < now)
+        )
         await self.db.commit()
         return result.rowcount  # type: ignore[attr-defined]
 
-    # ── Read ─────────────────────────────────────────────────────────────────
-
     async def get_valid_token(self, token: str) -> RefreshToken | None:
-        """Return the RefreshToken only if it exists, is not revoked, and not expired."""
         now = datetime.now(UTC)
         result = await self.db.execute(
             select(RefreshToken).where(
@@ -88,8 +80,8 @@ class AuthRepository:
         )
         return result.scalar_one_or_none()
 
-    # ── Private ──────────────────────────────────────────────────────────────
-
     async def _get_by_token(self, token: str) -> RefreshToken | None:
-        result = await self.db.execute(select(RefreshToken).where(RefreshToken.token == token))
+        result = await self.db.execute(
+            select(RefreshToken).where(RefreshToken.token == token)
+        )
         return result.scalar_one_or_none()
