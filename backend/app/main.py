@@ -12,7 +12,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-
 from app.routers import router as api_router
 
 # Create FastAPI app instance
@@ -22,7 +21,7 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/api/docs",  # Swagger UI documentation
     redoc_url="/api/redoc",  # ReDoc documentation
-    openapi_url="/api/openapi.json"  # OpenAPI schema
+    openapi_url="/api/openapi.json",  # OpenAPI schema
 )
 
 # Configure CORS (Cross-Origin Resource Sharing)
@@ -42,11 +41,7 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 @app.get("/")
 async def root():
     """Root endpoint - API information"""
-    return {
-        "message": "Welcome to TalkTribe API",
-        "version": "0.1.0",
-        "docs": "/api/docs"
-    }
+    return {"message": "Welcome to TalkTribe API", "version": "0.1.0", "docs": "/api/docs"}
 
 
 @app.get("/health")
@@ -63,7 +58,7 @@ async def health_check():
     return {
         "status": "healthy",
         "database": "connected",  # We'll implement actual checks later
-        "redis": "connected"
+        "redis": "connected",
     }
 
 

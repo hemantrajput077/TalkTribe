@@ -15,22 +15,23 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.auth import User
 from app.schemas.auth import CreateUser, RegisterResponse, UserLogin
+from app.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.schemas.token import LogoutRequest, RefreshRequest, Token
-from app.schemas.otp import VerifyEmailRequest, ResendOTPRequest, OTPResponse
 from app.services.auth_service import AuthService, get_auth_service, get_current_user
-from app.services.otp_service import create_otp, verify_otp, resend_otp
 from app.services.email_service import send_otp_email
+from app.services.otp_service import create_otp, resend_otp, verify_otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/register",
@@ -61,7 +62,7 @@ async def register(
     if not email_sent:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification email. Please try resending OTP."
+            detail="Failed to send verification email. Please try resending OTP.",
         )
 
     return OTPResponse(
@@ -70,6 +71,7 @@ async def register(
 
 
 # ── Verify Email ──────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/verify-email",
@@ -86,6 +88,7 @@ async def verify_email(
 
 # ── Resend OTP ────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/resend-otp",
     response_model=OTPResponse,
@@ -101,13 +104,14 @@ async def resend_otp_endpoint(
     if not email_sent:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification email. Please try again later."
+            detail="Failed to send verification email. Please try again later.",
         )
 
     return OTPResponse(message=f"New OTP sent to {body.email}. Please check your inbox.")
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/login",
@@ -123,6 +127,7 @@ async def login(
 
 # ── Refresh ───────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/refresh",
     response_model=Token,
@@ -136,6 +141,7 @@ async def refresh(
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/logout",
@@ -163,6 +169,7 @@ async def logout_all(
 
 # ── Protected: current user ───────────────────────────────────────────────────
 
+
 @router.get(
     "/me",
     response_model=RegisterResponse,
@@ -173,6 +180,7 @@ async def me(current_user: User = Depends(get_current_user)):
 
 
 # ── Admin / dev helpers ───────────────────────────────────────────────────────
+
 
 @router.get("/user_data", summary="List all users (admin/dev)")
 async def user_data(db: AsyncSession = Depends(get_db)):

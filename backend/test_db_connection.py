@@ -6,9 +6,11 @@ Run this inside the Docker container:
 """
 
 import asyncio
+
 from sqlalchemy import text
-from app.database import engine, AsyncSessionLocal
+
 from app.config import settings
+from app.database import AsyncSessionLocal, engine
 
 
 async def test_connection():
@@ -19,19 +21,19 @@ async def test_connection():
     print("=" * 60)
 
     # Display configuration
-    print(f"\n📋 Configuration:")
+    print("\n📋 Configuration:")
     print(f"   Database URL: {settings.DATABASE_URL}")
     print(f"   Project: {settings.PROJECT_NAME}")
 
     # Test connection
     try:
         async with engine.connect() as conn:
-            print(f"\n✅ Successfully connected to PostgreSQL!")
+            print("\n✅ Successfully connected to PostgreSQL!")
 
             # Get database version
             result = await conn.execute(text("SELECT version()"))
             version = result.scalar()
-            print(f"\n📦 PostgreSQL Version:")
+            print("\n📦 PostgreSQL Version:")
             print(f"   {version.split(',')[0]}")
 
             # Get current database
@@ -40,15 +42,17 @@ async def test_connection():
             print(f"\n🗄️  Current Database: {db_name}")
 
             # List all tables
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
                 ORDER BY table_name
-            """))
+            """)
+            )
             tables = result.fetchall()
 
-            print(f"\n📊 Tables in database:")
+            print("\n📊 Tables in database:")
             if tables:
                 for table in tables:
                     print(f"   - {table[0]}")
@@ -62,7 +66,7 @@ async def test_connection():
                 print(f"\n🧪 Session Test: {test_val == 1 and '✅ PASS' or '❌ FAIL'}")
 
     except Exception as e:
-        print(f"\n❌ Connection failed!")
+        print("\n❌ Connection failed!")
         print(f"   Error: {type(e).__name__}")
         print(f"   Message: {str(e)}")
         return False

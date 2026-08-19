@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from fastapi import HTTPException, status
 
-from app.models.otp import Otp
-from app.models.auth import User
-from app.utils.otp import generate_otp
+from fastapi import HTTPException, status
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
+from app.models.auth import User
+from app.models.otp import Otp
+from app.utils.otp import generate_otp
 
 """
 OTP Service - Business logic for OTP operations.
@@ -24,11 +25,7 @@ Why separate service layer?
 """
 
 
-async def create_otp(
-    db: AsyncSession,
-    user_id: int,
-    purpose: str = "REGISTER"
-) -> str:
+async def create_otp(db: AsyncSession, user_id: int, purpose: str = "REGISTER") -> str:
     """
     Generate and store a new OTP for a user.
 
@@ -54,11 +51,7 @@ async def create_otp(
 
     # Create OTP record
     otp_record = Otp(
-        user_id=user_id,
-        otp=otp_code,
-        purpose=purpose,
-        expires_at=expires_at,
-        is_used=False
+        user_id=user_id, otp=otp_code, purpose=purpose, expires_at=expires_at, is_used=False
     )
 
     db.add(otp_record)
@@ -69,10 +62,7 @@ async def create_otp(
 
 
 async def verify_otp(
-    db: AsyncSession,
-    email: str,
-    otp_code: str,
-    purpose: str = "REGISTER"
+    db: AsyncSession, email: str, otp_code: str, purpose: str = "REGISTER"
 ) -> User:
     """
     Verify OTP and mark user as verified.
@@ -108,10 +98,7 @@ async def verify_otp(
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # 2. Find valid OTP for this user
     # We need an OTP that:
@@ -120,29 +107,28 @@ async def verify_otp(
     # - Not yet used
     # - Not expired
     result = await db.execute(
-        select(Otp).where(
+        select(Otp)
+        .where(
             and_(
                 Otp.user_id == user.id,
                 Otp.purpose == purpose,
-                Otp.is_used == False,
-                Otp.expires_at > datetime.utcnow()
+                Otp.is_used == False,  # noqa: E712  nosec B712 — SQLAlchemy column expr, not Python bool
+                Otp.expires_at > datetime.utcnow(),
             )
-        ).order_by(Otp.created_at.desc())  # Get most recent OTP
+        )
+        .order_by(Otp.created_at.desc())  # Get most recent OTP
     )
     otp_record = result.scalar_one_or_none()
 
     if not otp_record:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No valid OTP found. Please request a new one."
+            detail="No valid OTP found. Please request a new one.",
         )
 
     # 3. Verify OTP matches
     if otp_record.otp != otp_code:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OTP"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OTP")
 
     # 4. Mark OTP as used (prevent reuse)
     otp_record.is_used = True
@@ -156,11 +142,7 @@ async def verify_otp(
     return user
 
 
-async def expire_old_otps(
-    db: AsyncSession,
-    user_id: int,
-    purpose: str = "REGISTER"
-) -> None:
+async def expire_old_otps(db: AsyncSession, user_id: int, purpose: str = "REGISTER") -> None:
     """
     Mark all unused OTPs for a user as used.
 
@@ -181,7 +163,7 @@ async def expire_old_otps(
             and_(
                 Otp.user_id == user_id,
                 Otp.purpose == purpose,
-                Otp.is_used == False
+                Otp.is_used == False,  # noqa: E712  nosec B712 — SQLAlchemy column expr, not Python bool
             )
         )
     )
@@ -193,10 +175,7 @@ async def expire_old_otps(
     await db.commit()
 
 
-async def resend_otp(
-    db: AsyncSession,
-    email: str
-) -> tuple[str, str]:
+async def resend_otp(db: AsyncSession, email: str) -> tuple[str, str]:
     """
     Resend OTP to user's email.
 
@@ -222,16 +201,12 @@ async def resend_otp(
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Check if user already verified
     if user.is_verified:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already verified"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified"
         )
 
     # Expire old OTPs

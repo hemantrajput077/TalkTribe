@@ -11,21 +11,20 @@ What this layer does:
 
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_password, verify_password
 from app.core.jwt import (
     create_access_token,
     create_refresh_token,
     verify_access_token,
     verify_refresh_token,
 )
+from app.core.security import hash_password, verify_password
 from app.database import get_db
 from app.models.auth import User
-from app.models.refresh_token import RefreshToken
 from app.repositories.auth_repository import AuthRepository
 from app.schemas.token import Token
 
@@ -40,24 +39,18 @@ class AuthService:
     # ── User lookup helpers ──────────────────────────────────────────────────
 
     async def get_user_by_username(self, username: str) -> User | None:
-        result = await self.db.execute(
-            select(User).where(User.username == username)
-        )
+        result = await self.db.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
     async def get_user_by_id(self, user_id: int) -> User | None:
-        result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
     async def check_username_exist(self, username: str) -> bool:
         return await self.get_user_by_username(username) is not None
 
     async def check_email_exist(self, email: str) -> bool:
-        result = await self.db.execute(
-            select(User).where(User.email == email)
-        )
+        result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none() is not None
 
     # ── Registration ─────────────────────────────────────────────────────────
@@ -88,7 +81,7 @@ class AuthService:
 
         # Constant-time check even when user doesn't exist — prevents
         # user-enumeration via response timing.
-        dummy_hash = "$2b$12$notarealhashjustpadding....................."
+        dummy_hash = "$2b$12$notarealhashjustpadding....................."  # intentional dummy for constant-time compare
         stored_hash = user.password if user else dummy_hash
 
         if not verify_password(password, stored_hash) or user is None:
@@ -159,6 +152,7 @@ class AuthService:
 
 
 # ── FastAPI dependency helpers ───────────────────────────────────────────────
+
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)

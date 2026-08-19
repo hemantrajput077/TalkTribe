@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"        # Run CI on every branch push
+  pull_request:    # Run CI on every PR (any base branch)
+
+jobs:
+  ci:
+    name: TalkTribe Backend CI
+    runs-on: ubuntu-latest
+
+    # PostgreSQL service for the Alembic migration check
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: talktribe
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: talktribe_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # Used by all checks that require settings to load
+      DATABASE_URL: postgresql+asyncpg://talktribe:ci_password@localhost:5432/talktribe_ci
+      SECRET_KEY: ci-test-secret-key-at-least-32-chars-long!!!
+      REFRESH_SECRET_KEY: ci-test-refresh-key-at-least-32-chars-long!!
+      JWT_SECRET_KEY: ci-test-jwt-key-at-least-32-chars-long!!!!!!
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── 3. uv ────────────────────────────────────────────────────────────────
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      # ── 4. Install dependencies ───────────────────────────────────────────────
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      # ── 5. Ruff format check ─────────────────────────────────────────────────
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      # ── 6. Ruff lint ─────────────────────────────────────────────────────────
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      # ── 7. Pytest ────────────────────────────────────────────────────────────
+      - name: Pytest
+        run: uv run pytest -v
+        env:
+          # Override DATABASE_URL for pytest — tests use SQLite, not PostgreSQL
+          DATABASE_URL: sqlite+aiosqlite:///./test_ci.db
+
+      # ── 8. MyPy ──────────────────────────────────────────────────────────────
+      - name: MyPy
+        run: uv run mypy app
+
+      # ── 9. Bandit ────────────────────────────────────────────────────────────
+      - name: Bandit security scan
+        run: uv run bandit -r app -c pyproject.toml
+
+      # ── 10. Alembic migration check ──────────────────────────────────────────
+      # Uses the PostgreSQL service container to run all migrations and verify
+      # no schema drift exists (i.e., all model changes have a corresponding migration).
+      - name: Alembic — apply migrations
+        run: uv run alembic upgrade head
+
+      - name: Alembic — check for missing migrations
+        run: uv run alembic check

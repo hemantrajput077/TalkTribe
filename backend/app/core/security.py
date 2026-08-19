@@ -2,6 +2,7 @@
 Password hashing using pwdlib (bcrypt) — modern replacement for passlib.
 pwdlib is fully compatible with latest bcrypt versions.
 """
+
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 

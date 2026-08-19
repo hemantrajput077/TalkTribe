@@ -1,15 +1,16 @@
-from logging.config import fileConfig
 import asyncio
+from logging.config import fileConfig
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.models  # noqa: F401 — registers User, RefreshToken, Otp on Base
 from alembic import context
 
 # Import your models and config
 from app.config import settings
 from app.db.base import Base
-import app.models  # noqa: F401 — registers User, RefreshToken, Otp on Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

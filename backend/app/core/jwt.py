@@ -12,12 +12,11 @@ Design decisions:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from jose import ExpiredSignatureError, JWTError, jwt
-from jose.exceptions import JWTError as JOSE_JWTError
 from fastapi import HTTPException, status
+from jose import ExpiredSignatureError, JWTError, jwt
 
 from app.core.config import settings
 
@@ -37,20 +36,21 @@ EXPIRED_EXCEPTION = HTTPException(
 
 # ── Internal helpers ────────────────────────────────────────────────────────
 
+
 def _build_payload(
     user_id: int,
     email: str,
     token_type: Literal["access", "refresh"],
     expire: datetime,
 ) -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return {
-        "sub": str(user_id),          # subject  – always a string
+        "sub": str(user_id),  # subject  – always a string
         "email": email,
         "type": token_type,
-        "jti": str(uuid.uuid4()),     # unique token ID (for revocation)
-        "iat": now,                    # issued-at
-        "exp": expire,                 # expiry
+        "jti": str(uuid.uuid4()),  # unique token ID (for revocation)
+        "iat": now,  # issued-at
+        "exp": expire,  # expiry
     }
 
 
@@ -59,18 +59,17 @@ def _decode(token: str, secret: str) -> dict:
     try:
         return jwt.decode(token, secret, algorithms=[settings.ALGORITHM])
     except ExpiredSignatureError:
-        raise EXPIRED_EXCEPTION
+        raise EXPIRED_EXCEPTION from None
     except JWTError:
-        raise CREDENTIALS_EXCEPTION
+        raise CREDENTIALS_EXCEPTION from None
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+
 def create_access_token(user_id: int, email: str) -> str:
     """Return a signed access JWT (short-lived)."""
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = _build_payload(user_id, email, "access", expire)
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
@@ -81,13 +80,9 @@ def create_refresh_token(user_id: int, email: str) -> tuple[str, datetime]:
     The expiry is returned so it can be persisted to the DB.
     Refresh tokens use a *different* secret key than access tokens.
     """
-    expire = datetime.now(timezone.utc) + timedelta(
-        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = _build_payload(user_id, email, "refresh", expire)
-    token = jwt.encode(
-        payload, settings.REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM
-    )
+    token = jwt.encode(payload, settings.REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM)
     return token, expire
 
 
@@ -115,9 +110,7 @@ def verify_refresh_token(token: str) -> dict:
 
 def get_token_jti(token: str, token_type: Literal["access", "refresh"]) -> str:
     """Extract the jti from a token without strict validation (use carefully)."""
-    secret = (
-        settings.SECRET_KEY if token_type == "access" else settings.REFRESH_SECRET_KEY
-    )
+    secret = settings.SECRET_KEY if token_type == "access" else settings.REFRESH_SECRET_KEY  # nosec B105
     try:
         payload = jwt.decode(
             token,
@@ -127,4 +120,4 @@ def get_token_jti(token: str, token_type: Literal["access", "refresh"]) -> str:
         )
         return payload["jti"]
     except JWTError:
-        raise CREDENTIALS_EXCEPTION
+        raise CREDENTIALS_EXCEPTION from None

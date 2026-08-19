@@ -1,7 +1,7 @@
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 import secrets
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
 
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -52,12 +52,8 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "TalkTribe"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=True,
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
 # Create global settings instance
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

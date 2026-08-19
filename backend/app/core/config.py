@@ -1,16 +1,17 @@
-from pydantic_settings import BaseSettings
-from pydantic import field_validator
 import secrets
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # ── JWT ────────────────────────────────────────────────────────────────
-    SECRET_KEY: str = secrets.token_urlsafe(64)          # access-token key
+    SECRET_KEY: str = secrets.token_urlsafe(64)  # access-token key
     REFRESH_SECRET_KEY: str = secrets.token_urlsafe(64)  # refresh-token key (separate!)
 
     ALGORITHM: str = "HS256"
 
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15     # short-lived
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # short-lived
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── Database ───────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     # ── App ────────────────────────────────────────────────────────────────
-    APP_ENV: str = "development"              # "production" | "development"
+    APP_ENV: str = "development"  # "production" | "development"
 
     @field_validator("SECRET_KEY", "REFRESH_SECRET_KEY")
     @classmethod
@@ -32,4 +33,4 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

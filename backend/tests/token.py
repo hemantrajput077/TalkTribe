@@ -1,12 +1,12 @@
+from app.core.config import settings
 from app.core.jwt import (
+    _decode,
     create_access_token,
     create_refresh_token,
+    get_token_jti,
     verify_access_token,
     verify_refresh_token,
-    get_token_jti,
-    _decode
 )
-from app.core.config import settings
 
 token = create_access_token(user_id=1, email="test@gmail.com")
 print(token)

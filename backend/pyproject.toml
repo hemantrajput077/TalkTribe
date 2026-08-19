@@ -19,7 +19,7 @@ dependencies = [
     "redis>=8.0.1",
     "sqlalchemy>=2.0.51",
     "uvicorn[standard]>=0.51.0",
-    "aiosmtplib"
+    "aiosmtplib",
 ]
 
 [build-system]
@@ -28,3 +28,72 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.20",
+    "bandit[toml]>=1.8",
+    "httpx>=0.28",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.16.3",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — formatter + linter
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    "alembic/versions/",
+    ".venv/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # line-too-long — handled by formatter
+    "B008",  # do not perform function calls in default argument values
+             # FastAPI Depends() is used this way by design
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# MyPy — static type checking
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = ["alembic/", ".venv/", "tests/"]
+
+# SQLAlchemy 2.0 Mapped[] columns: the ORM type stubs handle these well,
+# but the DateTime/String column types are SQLAlchemy types not Python types —
+# we allow Any for those columns only.
+[[tool.mypy.overrides]]
+module = "app.models.*"
+ignore_errors = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = "app.db.*"
+ignore_errors = false
+warn_return_any = false
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+# ---------------------------------------------------------------------------
+# Bandit — security linting
+# ---------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = [".venv", "alembic/versions", "tests"]
+skips = []
