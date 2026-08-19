@@ -97,3 +97,16 @@ def get_token_jti(token: str, token_type: Literal["access", "refresh"]) -> str:
         return payload["jti"]
     except JWTError:
         raise CREDENTIALS_EXCEPTION from None
+
+
+def decode_access_token_unverified_exp(token: str) -> dict:
+    """Decode an access token ignoring expiry — used to extract jti/exp for blocklisting."""
+    try:
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": False},
+        )
+    except JWTError:
+        raise CREDENTIALS_EXCEPTION from None

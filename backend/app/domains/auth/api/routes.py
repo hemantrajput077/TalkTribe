@@ -122,7 +122,7 @@ async def refresh(
     body: RefreshRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
-    return await svc.refresh_tokens(body.refresh_token)
+    return await svc.refresh_tokens(body.refresh_token, body.access_token)
 
 
 @router.post(
@@ -134,7 +134,7 @@ async def logout(
     body: LogoutRequest,
     svc: AuthService = Depends(get_auth_service),
 ):
-    await svc.logout(body.refresh_token)
+    await svc.logout(body.refresh_token, body.access_token)
 
 
 @router.post(
