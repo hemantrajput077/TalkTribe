@@ -8,14 +8,26 @@ This is where we:
 4. Define basic endpoints
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.infrastructure.cache import redis as redis_client
 from app.infrastructure.config.config import settings
 from app.api.v1.router import router as api_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await redis_client.startup()
+    yield
+    await redis_client.shutdown()
+
+
 # Create FastAPI app instance
 app = FastAPI(
+    lifespan=lifespan,
     title="TalkTribe API",
     description="Language Exchange Platform API",
     version="0.1.0",

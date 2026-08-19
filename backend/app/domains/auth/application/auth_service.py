@@ -12,14 +12,18 @@ Responsibilities:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.dependencies import get_db
+from app.infrastructure.cache.redis import blocklist_token
 from app.infrastructure.security.jwt import (
     create_access_token,
     create_refresh_token,
+    decode_access_token_unverified_exp,
     verify_refresh_token,
 )
 from app.infrastructure.security.password import hash_password, verify_password
@@ -100,7 +104,7 @@ class AuthService:
 
     # ── Token rotation ───────────────────────────────────────────────────────
 
-    async def refresh_tokens(self, refresh_token: str) -> Token:
+    async def refresh_tokens(self, refresh_token: str, access_token: str) -> Token:
         payload = verify_refresh_token(refresh_token)
 
         record = await self.repo.get_valid_token(refresh_token)
@@ -115,12 +119,20 @@ class AuthService:
         if user is None or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive.")
 
+        # Blocklist the old access token so it can't be used after this rotation.
+        at_payload = decode_access_token_unverified_exp(access_token)
+        exp = datetime.fromtimestamp(at_payload["exp"], tz=UTC)
+        await blocklist_token(at_payload["jti"], exp)
+
         await self.repo.revoke_token(refresh_token)
         return await self._issue_tokens(user)
 
     # ── Logout ───────────────────────────────────────────────────────────────
 
-    async def logout(self, refresh_token: str) -> None:
+    async def logout(self, refresh_token: str, access_token: str) -> None:
+        at_payload = decode_access_token_unverified_exp(access_token)
+        exp = datetime.fromtimestamp(at_payload["exp"], tz=UTC)
+        await blocklist_token(at_payload["jti"], exp)
         await self.repo.revoke_token(refresh_token)
 
     async def logout_all(self, user_id: int) -> None:
