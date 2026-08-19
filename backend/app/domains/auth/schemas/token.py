@@ -8,21 +8,15 @@ class Token(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    """Body for the /auth/refresh endpoint."""
-
     refresh_token: str
 
 
 class LogoutRequest(BaseModel):
-    """Body for the /auth/logout endpoint."""
-
     refresh_token: str
 
 
 class TokenPayload(BaseModel):
-    """Validated contents of a decoded JWT payload."""
-
-    sub: str  # user_id as string
+    sub: str       # user_id as string
     email: str
-    type: str  # "access" | "refresh"
-    jti: str  # unique token ID
+    type: str      # "access" | "refresh"
+    jti: str       # unique token ID

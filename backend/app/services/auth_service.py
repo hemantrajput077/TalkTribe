@@ -26,7 +26,7 @@ from app.infrastructure.security.password import hash_password, verify_password
 from app.infrastructure.database.dependencies import get_db
 from app.domains.auth.infrastructure.user_model import User
 from app.repositories.auth_repository import AuthRepository
-from app.schemas.token import Token
+from app.domains.auth.schemas.token import Token
 
 bearer_scheme = HTTPBearer()
 
