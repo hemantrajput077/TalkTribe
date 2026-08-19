@@ -5,7 +5,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-import app.models  # noqa: F401 — registers User, RefreshToken, Otp on Base
+import app.domains.auth.infrastructure.user_model  # noqa: F401 — registers User on Base.metadata
+import app.domains.auth.infrastructure.otp_model   # noqa: F401 — registers Otp on Base.metadata
+import app.domains.auth.infrastructure.token_model  # noqa: F401 — registers RefreshToken on Base.metadata
 from alembic import context
 
 # Import your models and config
