@@ -16,13 +16,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.jwt import (
+from app.infrastructure.security.jwt import (
     create_access_token,
     create_refresh_token,
     verify_access_token,
     verify_refresh_token,
 )
-from app.core.security import hash_password, verify_password
+from app.infrastructure.security.password import hash_password, verify_password
 from app.infrastructure.database.dependencies import get_db
 from app.models.auth import User
 from app.repositories.auth_repository import AuthRepository
