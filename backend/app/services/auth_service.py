@@ -23,7 +23,7 @@ from app.core.jwt import (
     verify_refresh_token,
 )
 from app.core.security import hash_password, verify_password
-from app.database import get_db
+from app.infrastructure.database.dependencies import get_db
 from app.models.auth import User
 from app.repositories.auth_repository import AuthRepository
 from app.schemas.token import Token
