@@ -23,9 +23,10 @@ from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.schemas.auth import CreateUser, RegisterResponse, UserLogin
 from app.domains.auth.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.domains.auth.schemas.token import LogoutRequest, RefreshRequest, Token
-from app.services.auth_service import AuthService, get_auth_service, get_current_user
-from app.services.email_service import send_otp_email
-from app.services.otp_service import create_otp, resend_otp, verify_otp
+from app.api.dependencies import get_current_user
+from app.domains.auth.application.auth_service import AuthService, get_auth_service
+from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
+from app.infrastructure.email.email_service import send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

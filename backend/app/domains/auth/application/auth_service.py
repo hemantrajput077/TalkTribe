@@ -1,34 +1,31 @@
 """
-Auth service — orchestrates user authentication and token lifecycle.
+AuthService — orchestrates user authentication and token lifecycle.
 
-What this layer does:
-  - Validates credentials (username + bcrypt password)
-  - Issues access + refresh tokens on login
-  - Rotates refresh tokens (old token revoked, new one issued)
-  - Logs the user out (revokes all tokens)
-  - Provides get_current_user FastAPI dependency
+Responsibilities:
+  - User lookup / existence checks
+  - Password hashing on registration
+  - Credential validation on login
+  - JWT access + refresh token issuance
+  - Refresh token rotation (revoke old → issue new pair)
+  - Single-device and all-device logout
 """
 
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infrastructure.database.dependencies import get_db
 from app.infrastructure.security.jwt import (
     create_access_token,
     create_refresh_token,
-    verify_access_token,
     verify_refresh_token,
 )
 from app.infrastructure.security.password import hash_password, verify_password
-from app.infrastructure.database.dependencies import get_db
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.infrastructure.repository import AuthRepository
 from app.domains.auth.schemas.token import Token
-
-bearer_scheme = HTTPBearer()
 
 
 class AuthService:
@@ -36,7 +33,7 @@ class AuthService:
         self.db = db
         self.repo = AuthRepository(db)
 
-    # ── User lookup helpers ──────────────────────────────────────────────────
+    # ── User lookups ─────────────────────────────────────────────────────────
 
     async def get_user_by_username(self, username: str) -> User | None:
         result = await self.db.execute(select(User).where(User.username == username))
@@ -76,12 +73,10 @@ class AuthService:
     # ── Login ────────────────────────────────────────────────────────────────
 
     async def authenticate_user(self, username: str, password: str) -> User:
-        """Return User on success; raise HTTP 401/403 on failure."""
         user = await self.get_user_by_username(username)
 
-        # Constant-time check even when user doesn't exist — prevents
-        # user-enumeration via response timing.
-        dummy_hash = "$2b$12$notarealhashjustpadding....................."  # intentional dummy for constant-time compare
+        # Constant-time path even when user doesn't exist (prevents timing attacks).
+        dummy_hash = "$2b$12$notarealhashjustpadding....................."
         stored_hash = user.password if user else dummy_hash
 
         if not verify_password(password, stored_hash) or user is None:
@@ -90,30 +85,22 @@ class AuthService:
                 detail="Incorrect username or password.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-
         if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is disabled.",
-            )
-
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled.")
         if not user.is_verified:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Email not verified. Please verify your email using the OTP sent to your inbox.",
             )
-
         return user
 
     async def login(self, username: str, password: str) -> Token:
-        """Authenticate and return a fresh access + refresh token pair."""
         user = await self.authenticate_user(username, password)
         return await self._issue_tokens(user)
 
     # ── Token rotation ───────────────────────────────────────────────────────
 
     async def refresh_tokens(self, refresh_token: str) -> Token:
-        """Validate incoming refresh token, revoke it, issue a new pair."""
         payload = verify_refresh_token(refresh_token)
 
         record = await self.repo.get_valid_token(refresh_token)
@@ -126,10 +113,7 @@ class AuthService:
 
         user = await self.get_user_by_id(int(payload["sub"]))
         if user is None or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive.",
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive.")
 
         await self.repo.revoke_token(refresh_token)
         return await self._issue_tokens(user)
@@ -151,39 +135,5 @@ class AuthService:
         return Token(access_token=access_token, refresh_token=refresh_token)
 
 
-# ── FastAPI dependency helpers ───────────────────────────────────────────────
-
-
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """
-    Dependency that extracts and validates the Bearer access token,
-    then returns the authenticated User. Use with Depends() in any route.
-    """
-    token = credentials.credentials
-    payload = verify_access_token(token)
-
-    user_id: int = int(payload["sub"])
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User no longer exists.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is disabled.",
-        )
-
-    return user
