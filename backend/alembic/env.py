@@ -9,7 +9,7 @@ import app.models  # noqa: F401 — registers User, RefreshToken, Otp on Base
 from alembic import context
 
 # Import your models and config
-from app.config import settings
+from app.infrastructure.config.config import settings
 from app.db.base import Base
 
 # this is the Alembic Config object, which provides

@@ -3,7 +3,7 @@ from email.mime.text import MIMEText
 
 import aiosmtplib
 
-from app.config import settings
+from app.infrastructure.config.config import settings
 
 """
 Email Service for sending OTP emails.

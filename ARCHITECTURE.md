@@ -1,4 +1,4 @@
-# TalkTribe - System Architecture
+clear# TalkTribe - System Architecture
 
 ## 1. Overall System Architecture
 
@@ -324,7 +324,7 @@ frontend/
 ├─────────────────────────┤    │
 │ id (PK)                 │    │
 │ user_id (FK)            │────┘
-│ token (unique)          │
+│ token (unique)          │ 
 │ expires_at              │
 │ revoked                 │
 │ created_at              │
@@ -335,7 +335,7 @@ frontend/
 
 #### users
 ```sql
-CREATE TABLE users (
+CREATE TABLE users ( 
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,

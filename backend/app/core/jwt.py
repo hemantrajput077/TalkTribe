@@ -18,7 +18,7 @@ from typing import Literal
 from fastapi import HTTPException, status
 from jose import ExpiredSignatureError, JWTError, jwt
 
-from app.core.config import settings
+from app.infrastructure.config.config import settings
 
 # ── Credential exception reused everywhere ──────────────────────────────────
 CREDENTIALS_EXCEPTION = HTTPException(
