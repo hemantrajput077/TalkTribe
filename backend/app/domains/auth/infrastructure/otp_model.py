@@ -9,7 +9,7 @@ class Otp(Base):
     __tablename__ = "otps"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     otp: Mapped[str] = mapped_column(String(6), nullable=False)
     purpose: Mapped[str] = mapped_column(String(30), nullable=False)
     expires_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
