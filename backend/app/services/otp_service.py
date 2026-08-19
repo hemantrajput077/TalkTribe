@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
+from app.infrastructure.config.config import settings
 from app.models.auth import User
 from app.models.otp import Otp
 from app.utils.otp import generate_otp

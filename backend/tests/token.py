@@ -1,4 +1,4 @@
-from app.core.config import settings
+from app.infrastructure.config.config import settings
 from app.core.jwt import (
     _decode,
     create_access_token,

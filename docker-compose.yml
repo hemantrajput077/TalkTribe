@@ -48,9 +48,10 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-talktribe}:${POSTGRES_PASSWORD:-root}@postgres:5432/${POSTGRES_DB:-talktribe}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_secret_key_change_in_production}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_must_be_32chars}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:-dev_refresh_key_change_in_production_32c}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
     depends_on:
       postgres:
