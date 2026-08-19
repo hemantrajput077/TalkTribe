@@ -10,7 +10,7 @@ from alembic import context
 
 # Import your models and config
 from app.infrastructure.config.config import settings
-from app.db.base import Base
+from app.infrastructure.database.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.infrastructure.database.dependencies import get_db
 from app.models.auth import User
 from app.schemas.auth import CreateUser, RegisterResponse, UserLogin
 from app.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest

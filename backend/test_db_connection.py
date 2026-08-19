@@ -10,7 +10,7 @@ import asyncio
 from sqlalchemy import text
 
 from app.infrastructure.config.config import settings
-from app.database import AsyncSessionLocal, engine
+from app.infrastructure.database.session import AsyncSessionLocal, engine
 
 
 async def test_connection():
