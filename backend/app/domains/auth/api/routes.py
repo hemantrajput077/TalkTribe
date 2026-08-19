@@ -1,7 +1,6 @@
 """
-Auth router — all authentication endpoints.
+Auth routes — all authentication endpoints.
 
-Endpoints:
   POST /auth/register        → create account + send OTP
   POST /auth/verify-email    → verify email with OTP
   POST /auth/resend-otp      → resend OTP to email
@@ -18,20 +17,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.dependencies import get_db
+from app.api.dependencies import get_current_user
+from app.domains.auth.application.auth_service import AuthService, get_auth_service
+from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.schemas.auth import CreateUser, RegisterResponse, UserLogin
 from app.domains.auth.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.domains.auth.schemas.token import LogoutRequest, RefreshRequest, Token
-from app.api.dependencies import get_current_user
-from app.domains.auth.application.auth_service import AuthService, get_auth_service
-from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
+from app.infrastructure.database.dependencies import get_db
 from app.infrastructure.email.email_service import send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-# ── Register ──────────────────────────────────────────────────────────────────
 
 
 @router.post(
@@ -71,9 +67,6 @@ async def register(
     )
 
 
-# ── Verify Email ──────────────────────────────────────────────────────────────
-
-
 @router.post(
     "/verify-email",
     response_model=OTPResponse,
@@ -85,9 +78,6 @@ async def verify_email(
 ):
     await verify_otp(db, body.email, body.otp, purpose="REGISTER")
     return OTPResponse(message="Email verified successfully! You can now login.")
-
-
-# ── Resend OTP ────────────────────────────────────────────────────────────────
 
 
 @router.post(
@@ -111,9 +101,6 @@ async def resend_otp_endpoint(
     return OTPResponse(message=f"New OTP sent to {body.email}. Please check your inbox.")
 
 
-# ── Login ─────────────────────────────────────────────────────────────────────
-
-
 @router.post(
     "/login",
     response_model=Token,
@@ -126,9 +113,6 @@ async def login(
     return await svc.login(body.username, body.password)
 
 
-# ── Refresh ───────────────────────────────────────────────────────────────────
-
-
 @router.post(
     "/refresh",
     response_model=Token,
@@ -139,9 +123,6 @@ async def refresh(
     svc: AuthService = Depends(get_auth_service),
 ):
     return await svc.refresh_tokens(body.refresh_token)
-
-
-# ── Logout ────────────────────────────────────────────────────────────────────
 
 
 @router.post(
@@ -168,9 +149,6 @@ async def logout_all(
     await svc.logout_all(current_user.id)
 
 
-# ── Protected: current user ───────────────────────────────────────────────────
-
-
 @router.get(
     "/me",
     response_model=RegisterResponse,
@@ -178,9 +156,6 @@ async def logout_all(
 )
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
-
-
-# ── Admin / dev helpers ───────────────────────────────────────────────────────
 
 
 @router.get("/user_data", summary="List all users (admin/dev)")
