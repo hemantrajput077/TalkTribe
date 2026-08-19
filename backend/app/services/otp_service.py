@@ -5,8 +5,8 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.config.config import settings
-from app.models.auth import User
-from app.models.otp import Otp
+from app.domains.auth.infrastructure.user_model import User
+from app.domains.auth.infrastructure.otp_model import Otp
 from app.utils.otp import generate_otp
 
 """

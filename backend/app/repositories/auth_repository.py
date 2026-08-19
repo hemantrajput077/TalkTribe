@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.refresh_token import RefreshToken
+from app.domains.auth.infrastructure.token_model import RefreshToken
 
 
 class AuthRepository:

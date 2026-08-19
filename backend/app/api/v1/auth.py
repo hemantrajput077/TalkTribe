@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.dependencies import get_db
-from app.models.auth import User
+from app.domains.auth.infrastructure.user_model import User
 from app.schemas.auth import CreateUser, RegisterResponse, UserLogin
 from app.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.schemas.token import LogoutRequest, RefreshRequest, Token
