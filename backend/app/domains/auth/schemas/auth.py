@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 class CreateUser(BaseModel):
     model_config = ConfigDict(
-        extra="forbid",  # Reject unknown fields
+        extra="forbid",
         str_strip_whitespace=True,
     )
 
@@ -28,7 +28,6 @@ class CreateUser(BaseModel):
     def validate_username(cls, value: str) -> str:
         if value.lower() in {"admin", "root", "system", "support", "superuser"}:
             raise ValueError("Username is reserved.")
-
         return value
 
     @field_validator("email")
@@ -39,20 +38,15 @@ class CreateUser(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-
         if not any(c.isupper() for c in value):
             raise ValueError("Password must contain at least one uppercase letter.")
-
         if not any(c.islower() for c in value):
             raise ValueError("Password must contain at least one lowercase letter.")
-
         if not any(c.isdigit() for c in value):
             raise ValueError("Password must contain at least one digit.")
-
         special = "!@#$%^&*()-_=+[]{}|\\:;\"'<>,.?/"
         if not any(c in special for c in value):
             raise ValueError("Password must contain at least one special character.")
-
         return value
 
     @field_validator("full_name")
@@ -60,10 +54,8 @@ class CreateUser(BaseModel):
     def validate_full_name(cls, value: str | None) -> str | None:
         if value is None:
             return value
-
         if not value.replace(" ", "").isalpha():
             raise ValueError("Full name should contain only alphabetic characters.")
-
         return value.title()
 
 
@@ -96,8 +88,6 @@ class UserLogin(BaseModel):
     @classmethod
     def validate_username(cls, value: str) -> str:
         reserved = {"admin", "root", "system", "support", "superuser"}
-
         if value.lower() in reserved:
             raise ValueError("Username is reserved.")
-
         return value
