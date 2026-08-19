@@ -1,5 +1,5 @@
 from app.infrastructure.config.config import settings
-from app.core.jwt import (
+from app.infrastructure.security.jwt import (
     _decode,
     create_access_token,
     create_refresh_token,
