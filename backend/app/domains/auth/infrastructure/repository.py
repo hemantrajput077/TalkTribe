@@ -63,9 +63,7 @@ class AuthRepository:
 
     async def delete_expired_tokens(self) -> int:
         now = datetime.now(UTC)
-        result = await self.db.execute(
-            delete(RefreshToken).where(RefreshToken.expires_at < now)
-        )
+        result = await self.db.execute(delete(RefreshToken).where(RefreshToken.expires_at < now))
         await self.db.commit()
         return result.rowcount  # type: ignore[attr-defined]
 
@@ -81,7 +79,5 @@ class AuthRepository:
         return result.scalar_one_or_none()
 
     async def _get_by_token(self, token: str) -> RefreshToken | None:
-        result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token == token)
-        )
+        result = await self.db.execute(select(RefreshToken).where(RefreshToken.token == token))
         return result.scalar_one_or_none()

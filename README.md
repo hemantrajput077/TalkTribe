@@ -1,168 +1,207 @@
-# TalkTribe - Language Exchange Platform
+# TalkTribe — Language Exchange Platform
 
-A real-time language exchange platform built with FastAPI, React, PostgreSQL, and WebRTC.
+A real-time language exchange platform built with FastAPI, React, PostgreSQL, Redis, and WebRTC.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
+
 - Docker Desktop installed and running
 - Git
 
-### Setup Instructions
+### Setup
 
-1. **Clone the repository** (if not already done)
-   ```bash
-   git clone <your-repo-url>
-   cd TalkTribe
-   ```
-
-2. **Create environment file**
-   ```bash
-   # Copy the example file
-   cp .env.example .env
-   
-   # Edit .env and change passwords if needed
-   ```
-
-3. **Start all services**
-   ```bash
-   docker-compose up --build
-   ```
-
-4. **Access the applications**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/api/docs
-   - PostgreSQL: localhost:5432
-   - Redis: localhost:6379
-
-### Testing the Setup
-
-1. Open http://localhost:5173 in your browser
-2. Click "Test API Connection" button
-3. You should see "✓ Connected: healthy"
-
-## 📦 Project Structure
-
-```
-TalkTribe/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── main.py         # FastAPI app entry point
-│   │   ├── config.py       # Configuration management
-│   │   ├── database.py     # Database connection
-│   │   └── core/           # Core functionality
-│   ├── tests/              # Backend tests
-│   └── Dockerfile.dev      # Development Docker image
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── App.tsx         # Main React component
-│   │   ├── main.tsx        # React entry point
-│   │   └── config/         # Frontend configuration
-│   └── Dockerfile.dev      # Development Docker image
-└── docker-compose.yml      # Docker services configuration
-```
-
-## 🛠️ Development Commands
-
-### Docker Commands
 ```bash
-# Start services
-docker-compose up
+# 1. Clone the repository
+git clone <your-repo-url>
+cd TalkTribe
 
-# Start in background
-docker-compose up -d
+# 2. Create environment files
+cp .env.example .env
+cp backend/.env.example backend/.env   # edit values if needed
 
-# Rebuild services
+# 3. Start all services
 docker-compose up --build
-
-# Stop services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# View specific service logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
 ```
 
-### Backend Commands (inside container)
-```bash
-# Enter backend container
-docker-compose exec backend bash
+### Access Points
 
-# Run tests
-pytest
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| PostgreSQL | localhost:**5433** |
+| Redis | localhost:6379 |
 
-# Check code style
-black .
-isort .
-flake8 .
-```
-
-### Frontend Commands (inside container)
-```bash
-# Enter frontend container
-docker-compose exec frontend sh
-
-# Run linter
-npm run lint
-```
-
-## 📚 Current Status
-
-**Milestone 1.1: Project Setup & Infrastructure** ✅ COMPLETE
-
-- ✅ Docker environment configured
-- ✅ PostgreSQL database running
-- ✅ Redis cache running
-- ✅ FastAPI backend with health checks
-- ✅ React frontend with Tailwind CSS
-- ✅ All services communicating
-
-**Next: Milestone 1.2 - Database Models & Migrations**
-
-## 🔧 Troubleshooting
-
-### Port Already in Use
-```bash
-# Check what's using the port
-netstat -ano | findstr :8000
-netstat -ano | findstr :5432
-
-# Kill the process or change ports in docker-compose.yml
-```
-
-### Docker Issues
-```bash
-# Clean restart
-docker-compose down -v
-docker-compose up --build
-
-# Check Docker is running
-docker ps
-```
-
-### Can't Connect to API
-1. Check backend logs: `docker-compose logs backend`
-2. Verify backend is healthy: http://localhost:8000/health
-3. Check CORS settings in `backend/app/config.py`
-
-## 📖 Documentation
-
-- Architecture: See [ARCHITECTURE.md](./ARCHITECTURE.md)
-- Milestones: See [MILESTONES.md](./MILESTONES.md)
-- Learning Guide: See [claude.md](./claude.md)
-
-## 🎯 Learning Resources
-
-This project is built with a learning-first approach. Check these files:
-- `backend/app/main.py` - Detailed comments on FastAPI setup
-- `backend/app/config.py` - Configuration management patterns
-- `backend/app/database.py` - Async SQLAlchemy setup
-- `frontend/src/App.tsx` - React with TypeScript example
+> PostgreSQL is mapped to port **5433** on your machine (not 5432) to avoid conflicts with any local Postgres installation.
 
 ---
 
-**Built with ❤️ for learning backend development**
+## Project Structure
+
+```
+TalkTribe/
+├── backend/
+│   ├── app/
+│   │   ├── main.py                         # FastAPI app entry point
+│   │   ├── api/v1/router.py                # Top-level API router
+│   │   ├── domains/
+│   │   │   └── auth/                       # Auth domain (DDD)
+│   │   │       ├── api/routes.py           # Auth HTTP endpoints
+│   │   │       ├── application/            # Business logic (services)
+│   │   │       ├── domain/                 # Pure domain logic (OTP utils)
+│   │   │       ├── infrastructure/         # DB models, repository
+│   │   │       └── schemas/                # Pydantic request/response models
+│   │   └── infrastructure/
+│   │       ├── config/config.py            # Settings (pydantic-settings)
+│   │       ├── database/                   # SQLAlchemy async session
+│   │       ├── cache/redis.py              # Redis client
+│   │       ├── email/email_service.py      # SMTP email
+│   │       └── security/                   # JWT + password hashing
+│   ├── alembic/                            # Database migrations
+│   ├── tests/                              # Pytest test suite
+│   ├── backend/.env                        # Backend environment variables
+│   └── pyproject.toml                      # Dependencies + tool config
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                         # Root React component
+│   │   └── main.tsx                        # React entry point
+│   └── Dockerfile.dev
+├── .env                                    # Docker Compose variables
+└── docker-compose.yml
+```
+
+---
+
+## Development Commands
+
+### Docker
+
+```bash
+docker-compose up           # Start all services
+docker-compose up -d        # Start in background
+docker-compose up --build   # Rebuild images and start
+docker-compose down         # Stop all services
+docker-compose down -v      # Stop and delete volumes (wipes DB)
+docker-compose logs -f      # Stream all logs
+docker-compose logs -f backend   # Stream backend logs only
+```
+
+### Backend — run from `backend/`
+
+```bash
+cd backend
+
+# Format code
+uv run ruff format .
+
+# Lint
+uv run ruff check --fix .
+
+# Type check
+uv run mypy app
+
+# Tests (uses SQLite, no Docker needed)
+DATABASE_URL=sqlite+aiosqlite:///./test_ci.db uv run pytest -v
+
+# Security scan
+uv run bandit -r app -c pyproject.toml
+
+# Migrations (Docker must be running)
+docker-compose exec backend uv run alembic upgrade head
+docker-compose exec backend uv run alembic check
+```
+
+### Generate a new migration after changing a model
+
+```bash
+docker-compose exec backend uv run alembic revision --autogenerate -m "describe change"
+docker-compose exec backend uv run alembic upgrade head
+```
+
+---
+
+## Pre-Push Checklist
+
+Run all checks from `backend/` before pushing or opening a PR:
+
+```bash
+# Git Bash
+cd backend && \
+  uv run ruff format --check . && \
+  uv run ruff check . && \
+  DATABASE_URL=sqlite+aiosqlite:///./test_ci.db uv run pytest -v && \
+  uv run mypy app && \
+  uv run bandit -r app -c pyproject.toml && \
+  echo "All checks passed — safe to push"
+```
+
+```powershell
+# PowerShell
+cd backend
+uv run ruff format --check .
+uv run ruff check .
+$env:DATABASE_URL="sqlite+aiosqlite:///./test_ci.db"; uv run pytest -v
+uv run mypy app
+uv run bandit -r app -c pyproject.toml
+```
+
+| Check | What it verifies |
+|---|---|
+| `ruff format --check` | Code style (indentation, quotes, spacing) |
+| `ruff check` | Code quality (unused imports, bad patterns) |
+| `pytest` | Test correctness |
+| `mypy` | Type safety |
+| `bandit` | Security (hardcoded secrets, injection risks) |
+| `alembic check` | No model changes missing a migration |
+
+---
+
+## Current Status
+
+| Feature | Status |
+|---|---|
+| Docker environment | Done |
+| PostgreSQL + Redis | Done |
+| FastAPI app structure (DDD) | Done |
+| User registration + login | Done |
+| JWT access + refresh tokens | Done |
+| Email OTP verification | Done |
+| Redis access token blocklist | Done |
+| WebSocket / real-time chat | Planned |
+| WebRTC voice/video | Planned |
+
+---
+
+## Troubleshooting
+
+**Port already in use**
+```bash
+netstat -ano | findstr :8000
+netstat -ano | findstr :5433
+# Kill the listed PID or change the port in docker-compose.yml
+```
+
+**Clean Docker restart**
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+
+**Cannot connect to API**
+1. Check logs: `docker-compose logs backend`
+2. Verify health: http://localhost:8000/health
+3. Check CORS origins in `backend/app/infrastructure/config/config.py`
+
+**`DATABASE_URL` missing error when running pytest**
+Always run pytest from inside `backend/`, or pass the URL explicitly:
+```bash
+DATABASE_URL=sqlite+aiosqlite:///./test_ci.db uv run pytest -v
+```
+
+---
+
+## Documentation
+
+See the `docs/` folder for architecture, database design, API design, and learning notes.

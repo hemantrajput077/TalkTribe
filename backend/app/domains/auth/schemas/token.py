@@ -18,7 +18,7 @@ class LogoutRequest(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: str       # user_id as string
+    sub: str  # user_id as string
     email: str
-    type: str      # "access" | "refresh"
-    jti: str       # unique token ID
+    type: str  # "access" | "refresh"
+    jti: str  # unique token ID
