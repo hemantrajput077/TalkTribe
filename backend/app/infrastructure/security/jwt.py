@@ -86,7 +86,7 @@ def verify_refresh_token(token: str) -> dict:
 
 
 def get_token_jti(token: str, token_type: Literal["access", "refresh"]) -> str:
-    secret = settings.SECRET_KEY if token_type == "access" else settings.REFRESH_SECRET_KEY
+    secret = settings.SECRET_KEY if token_type == "access" else settings.REFRESH_SECRET_KEY  # nosec B105 — "access" is a token-type label, not a password
     try:
         payload = jwt.decode(
             token,
