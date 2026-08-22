@@ -10,10 +10,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.infrastructure.user_model import User
 from app.infrastructure.cache.redis import is_blocklisted
 from app.infrastructure.database.dependencies import get_db
 from app.infrastructure.security.jwt import verify_access_token
-from app.domains.auth.infrastructure.user_model import User
 
 bearer_scheme = HTTPBearer()
 

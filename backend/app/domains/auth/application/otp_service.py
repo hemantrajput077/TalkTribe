@@ -4,10 +4,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.config.config import settings
-from app.domains.auth.infrastructure.user_model import User
-from app.domains.auth.infrastructure.otp_model import Otp
 from app.domains.auth.domain.otp_utils import generate_otp
+from app.domains.auth.infrastructure.otp_model import Otp
+from app.domains.auth.infrastructure.user_model import User
+from app.infrastructure.config.config import settings
 
 
 async def create_otp(db: AsyncSession, user_id: int, purpose: str = "REGISTER") -> str:
@@ -89,7 +89,9 @@ async def resend_otp(db: AsyncSession, email: str) -> tuple[str, str]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     if user.is_verified:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified"
+        )
 
     await expire_old_otps(db, user.id, purpose="REGISTER")
     otp_code = await create_otp(db, user.id, purpose="REGISTER")

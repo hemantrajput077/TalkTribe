@@ -1,7 +1,11 @@
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 import secrets
+from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Always points to backend/.env regardless of where the process is launched from.
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -12,7 +16,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
 
     # ── CORS ──────────────────────────────────────────────────────────────────
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -56,7 +60,7 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "TalkTribe"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         case_sensitive=True,
         extra="ignore",
     )

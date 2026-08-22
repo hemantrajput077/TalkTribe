@@ -18,8 +18,11 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.dependencies import get_db
+from app.domains.auth.infrastructure.repository import AuthRepository
+from app.domains.auth.infrastructure.user_model import User
+from app.domains.auth.schemas.token import Token
 from app.infrastructure.cache.redis import blocklist_token
+from app.infrastructure.database.dependencies import get_db
 from app.infrastructure.security.jwt import (
     create_access_token,
     create_refresh_token,
@@ -27,9 +30,6 @@ from app.infrastructure.security.jwt import (
     verify_refresh_token,
 )
 from app.infrastructure.security.password import hash_password, verify_password
-from app.domains.auth.infrastructure.user_model import User
-from app.domains.auth.infrastructure.repository import AuthRepository
-from app.domains.auth.schemas.token import Token
 
 
 class AuthService:
@@ -90,7 +90,9 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         if not user.is_active:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled."
+            )
         if not user.is_verified:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -117,7 +119,9 @@ class AuthService:
 
         user = await self.get_user_by_id(int(payload["sub"]))
         if user is None or not user.is_active:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive."
+            )
 
         # Blocklist the old access token so it can't be used after this rotation.
         at_payload = decode_access_token_unverified_exp(access_token)
