@@ -1,0 +1,253 @@
+# TalkTribe — EPIC-00 Engineering Foundation
+# Source: docs/planning/epic-00-jira-stories.md
+#
+# Run:  python create_demo.py
+# Add more epics as separate YAML files (e.g. requirements/epic-01-auth.yaml)
+
+epic:
+  summary: "EPIC-00 — Engineering Foundation"
+  planning_id: "EPIC-00"
+  milestone: "M0"
+  labels:
+    - backend
+    - infrastructure
+    - mvp
+  description: |
+    Create a stable, testable, and secure application foundation
+    before additional TalkTribe domains are implemented.
+
+    Scope: canonical configuration, DB/session infrastructure,
+    security utilities, automated test foundation, API error conventions,
+    CI quality gates.
+
+stories:
+  - id: ENG-01
+    summary: "Consolidate backend application configuration"
+    priority: Critical
+    labels:
+      - backend
+      - infrastructure
+      - mvp
+    description: |
+      As the TalkTribe backend, I need one authoritative configuration system
+      so that all environments use consistent database, JWT, Redis, email,
+      storage, CORS, and logging settings.
+
+      In Scope:
+      - Identify all active configuration implementations and select one canonical module
+      - Consolidate database, JWT, Redis, email, CORS, and logging configuration
+      - Define environment selection and fail clearly when required production secrets are missing
+      - Remove or deprecate duplicate active configuration paths
+
+      Out of Scope: AWS Secrets Manager, SSM integration, production deployment,
+      feature-specific business configuration, notification configuration.
+
+      Dependencies: None.
+
+      Acceptance Criteria:
+      Given the backend starts, when configuration is loaded,
+      then one authoritative configuration object is used by the application.
+
+      Given the app runs in production, when a required secret such as JWT secret is missing,
+      then startup fails clearly instead of generating an unsafe random replacement.
+
+      Given database, Redis, and email settings are configured,
+      when their adapters initialize, then they read from the canonical configuration system.
+
+      Security: secrets must not be logged, JWT secret behavior must be deterministic.
+
+  - id: ENG-02
+    summary: "Consolidate SQLAlchemy engine and session management"
+    priority: Critical
+    labels:
+      - backend
+      - database
+      - mvp
+    description: |
+      As the TalkTribe backend, I need one database engine and session-management
+      implementation so that all domains use consistent connections, transactions,
+      and request-scoped sessions.
+
+      In Scope:
+      - Identify active SQLAlchemy engine/session implementations
+      - Establish one canonical async engine and one canonical async session factory
+      - Establish one request-scoped database dependency
+      - Document transaction ownership expectations
+      - Migrate active imports and remove duplicate DB infrastructure
+      - Ensure Alembic uses compatible metadata/configuration
+
+      Out of Scope: creating feature tables, database-provider migration,
+      production backup implementation, performance tuning.
+
+      Dependencies: ENG-01 (canonical configuration).
+
+      Acceptance Criteria:
+      Given an API request requires database access, when a session is provided,
+      then it comes from the canonical async session factory.
+
+      Given a request completes or fails, when its database dependency exits,
+      then the session is closed correctly.
+
+      Given an application use case modifies multiple records and one operation fails,
+      then related writes are rolled back together.
+
+      Technical Notes: Repositories should not independently commit unless an
+      explicitly approved exception exists.
+
+  - id: ENG-03
+    summary: "Consolidate password hashing and JWT security utilities"
+    priority: Critical
+    labels:
+      - backend
+      - security
+      - mvp
+    description: |
+      As the TalkTribe authentication system, I need one canonical security
+      implementation so that passwords and JWTs are handled consistently and
+      safely across the application.
+
+      In Scope:
+      - Identify and select canonical password hash/verify path
+      - Identify and select canonical JWT encode/decode path
+      - Migrate Auth to canonical utilities
+      - Preserve existing valid password compatibility where required
+      - Remove or deprecate competing implementations
+
+      Out of Scope: MFA, OAuth/Google login, refresh-token workflow changes,
+      password-reset feature.
+
+      Dependencies: ENG-01 (configuration consolidation).
+
+      Acceptance Criteria:
+      Given a new password is stored, then the canonical password utility is used.
+
+      Given an incorrect password, when verification occurs,
+      then it fails without exposing hash details.
+
+      Given an authenticated identity, when an access token is created,
+      then the canonical JWT utility and configured signing secret are used.
+
+      Given a valid application token, when decoded,
+      then the canonical validation path accepts it. Expired/invalid tokens must be rejected.
+
+      Security: never log raw passwords or token contents, reject invalid/expired signatures,
+      do not introduce random production signing secrets.
+
+  - id: ENG-04
+    summary: "Establish backend automated test foundation"
+    priority: Critical
+    labels:
+      - backend
+      - testing
+      - mvp
+    description: |
+      As a developer, I need a repeatable backend test environment so that
+      refactoring and feature development can proceed without silently breaking
+      existing behavior.
+
+      In Scope:
+      - Standardize pytest configuration and configure async tests
+      - Establish FastAPI test client pattern
+      - Establish database-test fixtures and transaction/data cleanup strategy
+      - Define integration-test conventions
+      - Add shared test factories/helpers only where useful
+      - Prepare real PostgreSQL integration path for DB-specific behavior
+
+      Out of Scope: full test coverage for every future feature,
+      complete end-to-end browser suite, load testing, production monitoring.
+
+      Dependencies: ENG-01, ENG-02.
+
+      Acceptance Criteria:
+      Given a developer checks out the project with required dependencies,
+      when the documented test command is run, then the test suite starts reliably.
+
+      Given an async application test, when pytest executes it,
+      then async FastAPI/SQLAlchemy behavior is supported.
+
+      Given one test writes database data, when the next independent test runs,
+      then it does not accidentally depend on previous test state.
+
+      Technical Notes: SQLite may be used for isolated lightweight tests but must not
+      be treated as equivalent to PostgreSQL for DB-specific semantics.
+
+  - id: ENG-05
+    summary: "Standardize API error response conventions"
+    priority: High
+    labels:
+      - backend
+      - api
+      - mvp
+    description: |
+      As a frontend/client developer, I need predictable backend error responses
+      so that the application can handle validation, authorization, conflicts, and
+      business errors consistently.
+
+      Error shape:
+        { "error": { "code": "PROFILE_INCOMPLETE", "message": "..." } }
+
+      In Scope:
+      - Define standard error response shape and stable application error codes
+      - Map business exceptions to HTTP responses
+      - Distinguish validation, authentication, authorization, conflict,
+        not-found, and server errors
+      - Integrate conventions with FastAPI exception handling
+      - Migrate critical Auth errors where practical
+      - Prevent internal exception details from leaking to clients
+
+      Out of Scope: defining every future domain error code now,
+      frontend toast design, observability platform selection.
+
+      Dependencies: ENG-01, stable FastAPI application setup.
+
+      Acceptance Criteria:
+      Invalid request data returns an appropriate 4xx response without internal stack details.
+
+      Missing/invalid authentication returns a consistent authentication error structure.
+
+      Authenticated user lacking permission receives a consistent forbidden response.
+
+      Unexpected internal exceptions do not expose stack traces, SQL, secrets,
+      or implementation details to clients.
+
+      Security: never expose SQL, passwords, tokens, secrets, or stack traces in
+      production responses.
+
+  - id: ENG-06
+    summary: "Add automated CI quality gates for backend changes"
+    priority: High
+    labels:
+      - backend
+      - infrastructure
+      - testing
+      - mvp
+    description: |
+      As a developer, I need automated checks on every pull request so that tests,
+      linting, typing, and security checks catch regressions before merge.
+
+      CI must run: tests, ruff, mypy, bandit.
+      Optional: Alembic migration validation, build/import smoke test.
+      Commands must match what developers run locally.
+
+      In Scope:
+      - Verify and/or configure CI to run tests, ruff, mypy, and bandit on every PR
+      - Ensure CI commands are documented and executable locally
+
+      Out of Scope: production deployment, expensive load tests on every PR,
+      frontend CI, full SAST platform integration.
+
+      Dependencies: ENG-04 (test foundation), stable project dependency installation.
+
+      Acceptance Criteria:
+      Given a PR changes backend code, when CI runs,
+      then all required backend quality checks execute automatically.
+
+      Given an automated test fails, then the CI job fails.
+
+      Given Ruff finds a configured blocking violation, then the relevant CI job fails.
+
+      Given Bandit reports a blocking security issue, then the security check fails.
+
+      CI commands are documented and can be executed locally.
+
+      Security: CI logs must not print secrets. Test secrets must be non-production.
