@@ -32,19 +32,25 @@ class TestLoginSuccess:
     @pytest.mark.asyncio
     async def test_returns_200(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": _USER["password"],
+            },
+        )
         assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_returns_access_and_refresh_tokens(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": _USER["password"],
+            },
+        )
         data = response.json()
         assert "access_token" in data
         assert "refresh_token" in data
@@ -52,10 +58,13 @@ class TestLoginSuccess:
     @pytest.mark.asyncio
     async def test_tokens_are_non_empty_strings(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": _USER["password"],
+            },
+        )
         data = response.json()
         assert isinstance(data["access_token"], str) and len(data["access_token"]) > 10
         assert isinstance(data["refresh_token"], str) and len(data["refresh_token"]) > 10
@@ -63,10 +72,13 @@ class TestLoginSuccess:
     @pytest.mark.asyncio
     async def test_token_type_is_bearer(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": _USER["password"],
+            },
+        )
         assert response.json()["token_type"] == "Bearer"
 
 
@@ -74,41 +86,58 @@ class TestLoginFailures:
     @pytest.mark.asyncio
     async def test_wrong_password_returns_401(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": "WrongPass1!",
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": "WrongPass1!",
+            },
+        )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_wrong_username_returns_401(self, client, mock_send_email):
         await _setup_verified_user(client, mock_send_email)
-        response = await client.post(LOGIN_URL, json={
-            "username": "ghostuser",
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": "ghostuser",
+                "password": _USER["password"],
+            },
+        )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_unverified_user_returns_403(self, client, mock_send_email):
         # Register but do NOT verify
         await client.post(REGISTER_URL, json=_USER)
-        response = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": _USER["password"],
-        })
+        response = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": _USER["password"],
+            },
+        )
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_error_message_does_not_reveal_which_field_is_wrong(self, client, mock_send_email):
+    async def test_error_message_does_not_reveal_which_field_is_wrong(
+        self, client, mock_send_email
+    ):
         """Username and wrong-password errors must return the same message (timing-safe)."""
         await _setup_verified_user(client, mock_send_email)
-        wrong_user_resp = await client.post(LOGIN_URL, json={
-            "username": "ghostuser",
-            "password": _USER["password"],
-        })
-        wrong_pass_resp = await client.post(LOGIN_URL, json={
-            "username": _USER["username"],
-            "password": "WrongPass1!",
-        })
+        wrong_user_resp = await client.post(
+            LOGIN_URL,
+            json={
+                "username": "ghostuser",
+                "password": _USER["password"],
+            },
+        )
+        wrong_pass_resp = await client.post(
+            LOGIN_URL,
+            json={
+                "username": _USER["username"],
+                "password": "WrongPass1!",
+            },
+        )
         assert wrong_user_resp.json()["detail"] == wrong_pass_resp.json()["detail"]

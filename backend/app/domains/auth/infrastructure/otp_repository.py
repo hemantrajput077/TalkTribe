@@ -42,7 +42,7 @@ class OtpRepository:
                     Otp.expires_at > datetime.utcnow(),
                 )
             )
-            .order_by(Otp.created_at.desc(  ))
+            .order_by(Otp.created_at.desc())
         )
         return result.scalar_one_or_none()
 

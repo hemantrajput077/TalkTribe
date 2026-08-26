@@ -19,7 +19,12 @@ class CreateUser(BaseModel):
     )
 
     email: EmailStr
-    phone_number: str = Field(..., min_length=10, max_length=15, description = "Phone number must follow E.164 format (e.g., +[CountryCode][Number]). ")
+    phone_number: str = Field(
+        ...,
+        min_length=10,
+        max_length=15,
+        description="Phone number must follow E.164 format (e.g., +[CountryCode][Number]). ",
+    )
     password: str = Field(..., min_length=8, max_length=128, description="Password must be strong.")
 
     full_name: str | None = Field(default=None, min_length=2, max_length=100)
@@ -35,15 +40,14 @@ class CreateUser(BaseModel):
     @classmethod
     def normalize_email(cls, value: EmailStr) -> str:
         return value.lower()
+
     @field_validator("phone_number")
     @classmethod
-    def validate_phone_number(cls,value : str) -> str:
+    def validate_phone_number(cls, value: str) -> str:
         value = value.strip()
 
-        if not re.fullmatch(r"\+[1-9]\d{7,14}",value):
-            raise ValueError(
-                "Phone number must be in E.164 format , e.g. +919876543210"
-            )
+        if not re.fullmatch(r"\+[1-9]\d{7,14}", value):
+            raise ValueError("Phone number must be in E.164 format , e.g. +919876543210")
         return value
 
     @field_validator("password")
@@ -77,7 +81,7 @@ class RegisterResponse(BaseModel):
     username: str
     full_name: str | None = None
     email: EmailStr
-    phone_number : str
+    phone_number: str
     is_active: bool
     is_verified: bool
     created_at: datetime
