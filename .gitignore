@@ -43,4 +43,4 @@ postgres_data/
 redis_data/
 
 # Docs
-docs/
+# docs/

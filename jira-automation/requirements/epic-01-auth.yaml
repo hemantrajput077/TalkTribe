@@ -1,0 +1,374 @@
+# TalkTribe — EPIC-01 Authentication & Account Security
+# Source: docs/workflows/authentication.md + docs/architecture/security.md
+#
+# Run:  python create_demo.py requirements/epic-01-auth.yaml
+#
+# AUTH-00 is the baseline story — already done, closed immediately.
+# AUTH-01 through AUTH-07 are real remaining work items.
+
+epic:
+  summary: "EPIC-01 — Authentication & Account Security"
+  planning_id: "EPIC-01"
+  milestone: "M1"
+  labels:
+    - backend
+    - security
+    - auth
+    - mvp
+  description: |
+    Harden and complete the TalkTribe authentication system so it is
+    architecturally ready for all dependent domains (Profile, Matching,
+    Friendship, Presence, Pairing, Calls).
+
+    The core auth flow (register, OTP verify, login, refresh, logout) is
+    already implemented. This Epic fixes the known security gaps and adds
+    the missing fields and contracts before building any other domain.
+
+    Reference: docs/workflows/authentication.md
+               docs/architecture/security.md
+
+stories:
+  - id: AUTH-00
+    summary: "Auth baseline: register, OTP verify, login, JWT tokens, refresh, logout, /me [DONE]"
+    priority: Highest
+    labels:
+      - backend
+      - auth
+      - mvp
+    description: |
+      BASELINE — Already implemented. Close this story immediately.
+
+      What exists in the codebase:
+      - POST /api/v1/auth/register
+      - POST /api/v1/auth/verify-email
+      - POST /api/v1/auth/resend-otp
+      - POST /api/v1/auth/login
+      - POST /api/v1/auth/refresh  (with Redis access token blocklist)
+      - POST /api/v1/auth/logout
+      - POST /api/v1/auth/logout-all
+      - GET  /api/v1/auth/me
+
+      JWT access + refresh token pair, OTP with purpose binding and expiry,
+      is_verified flag, Redis blocklist on refresh and logout.
+
+      This story exists only to acknowledge the baseline in JIRA history.
+      All known gaps are tracked in AUTH-01 through AUTH-07.
+
+  - id: AUTH-01
+    summary: "Hash OTP values before persistence"
+    priority: Highest
+    labels:
+      - backend
+      - security
+      - auth
+      - mvp
+    description: |
+      As the TalkTribe auth system, OTP values must never be stored in plaintext
+      so that a database breach cannot reveal active verification codes.
+
+      Current state: the `otps` table stores raw 6-digit OTP in `otp: String(6)`.
+      Target state: store only a hash of the OTP; verify by hashing the submitted value.
+
+      In Scope:
+      - Rename `otp` column to `otp_hash` in the OTP model and migration
+      - Update otp_utils.py to hash the OTP before storage
+      - Update repository/service to hash submitted OTP before comparison
+      - Ensure the plaintext OTP is only held in memory long enough to email it
+      - Update any tests that construct OTP records directly
+
+      Out of Scope: changing OTP length, expiry policy, or purpose logic.
+
+      Dependencies: None (self-contained security fix).
+
+      Acceptance Criteria:
+      Given a user registers, when the OTP is stored in the database,
+      then the raw OTP value is not present — only its hash.
+
+      Given a user submits the correct OTP, when verification runs,
+      then the submitted value is hashed and compared to the stored hash.
+
+      Given a database is compromised, the stored OTP hash must not allow
+      direct replay of the OTP without knowing the original value.
+
+      Security: a plaintext OTP must never appear in database records, logs, or API responses.
+
+  - id: AUTH-02
+    summary: "Remove unauthenticated user management endpoints"
+    priority: Highest
+    labels:
+      - backend
+      - security
+      - auth
+      - mvp
+    description: |
+      As the TalkTribe platform, unauthenticated endpoints that list or delete
+      users must be removed or protected before any other feature is built on top
+      of this auth system.
+
+      Current state (confirmed in routes.py):
+      - GET  /api/v1/auth/user_data  — lists ALL users, no authentication required
+      - DELETE /api/v1/auth/delete_user — deletes a user, no authentication required
+
+      These are development/debug endpoints that were never secured.
+
+      In Scope:
+      - Remove /user_data and /delete_user from auth routes entirely
+      - If a user-listing endpoint is needed for admin, it belongs in the future Admin domain
+        behind require_admin, not in the Auth domain
+      - Verify no other unprotected sensitive endpoints exist in auth routes
+
+      Out of Scope: building the Admin domain, admin user list, or moderation tools.
+
+      Dependencies: None (isolated removal).
+
+      Acceptance Criteria:
+      Given an unauthenticated request to GET /api/v1/auth/user_data,
+      then the endpoint returns 404 (removed) or 401 (if kept and protected).
+
+      Given an unauthenticated request to DELETE /api/v1/auth/delete_user,
+      then the endpoint returns 404 or 401.
+
+      Given a search of the auth routes, no endpoint exposes user data or
+      destructive actions without authentication.
+
+      Security: no auth endpoint must expose user records or allow deletion without verification.
+
+  - id: AUTH-03
+    summary: "Add phone number to user registration"
+    priority: High
+    labels:
+      - backend
+      - auth
+      - database
+      - mvp
+    description: |
+      As the TalkTribe platform, phone number is a required registration field
+      so that one phone number cannot create unlimited accounts and future
+      moderation/account controls have a stable identity anchor.
+
+      Current state: User model has no phone_number field.
+      Product decision: phone is required at registration (docs/workflows/authentication.md §3).
+
+      In Scope:
+      - Add phone_number column to the users table (migration)
+      - Add unique constraint on phone_number
+      - Add phone_number to registration schema (required, validated format)
+      - Add phone uniqueness check in auth service before insert
+      - Return PHONE_ALREADY_EXISTS error on duplicate
+      - Database constraint enforces uniqueness as final guarantee
+
+      Out of Scope: phone OTP verification, SMS delivery, phone-based login.
+
+      Dependencies: None.
+
+      Acceptance Criteria:
+      Given a registration request without phone_number,
+      then the API rejects it with a validation error.
+
+      Given two registration attempts with the same phone number,
+      then the second returns a conflict error (PHONE_ALREADY_EXISTS).
+
+      Given a valid unique phone number in registration,
+      then the user is created successfully.
+
+      Database Impact: new phone_number column + unique constraint on users table.
+
+  - id: AUTH-04
+    summary: "Add role and account status to user model and authenticated identity"
+    priority: Highest
+    labels:
+      - backend
+      - auth
+      - database
+      - security
+      - mvp
+    description: |
+      As every TalkTribe domain, I need role and account status from the
+      authenticated identity so I can make authorization decisions without
+      querying the user table myself.
+
+      Current state: User model only has is_verified boolean. No role field,
+      no account_status enum. All other domains are blocked until this exists.
+
+      Target state:
+        role: USER | ADMIN  (default USER)
+        account_status: PENDING_VERIFICATION | ACTIVE | SUSPENDED | BLOCKED | DELETED
+
+      In Scope:
+      - Add role column to users table (migration, default USER)
+      - Add account_status column to users table (migration, default PENDING_VERIFICATION)
+      - Set account_status = ACTIVE on successful OTP verification (replace is_verified flag)
+      - Update login to check account_status instead of only is_verified
+      - Update get_current_user / AuthenticatedIdentity to expose role + account_status
+      - Rejected states: SUSPENDED, BLOCKED, DELETED must fail login with appropriate error
+      - Keep is_verified for backwards compatibility or remove if account_status replaces it
+
+      Out of Scope: admin UI, assigning ADMIN role via API (done directly in DB for now),
+      suspension/blocking endpoints (Admin domain).
+
+      Dependencies: AUTH-02 (clean auth routes).
+
+      Acceptance Criteria:
+      Given a user completes OTP verification,
+      then their account_status becomes ACTIVE and they can log in.
+
+      Given a user with account_status SUSPENDED attempts to log in,
+      then login is rejected with ACCOUNT_SUSPENDED.
+
+      Given a protected route is accessed by an authenticated user,
+      then the AuthenticatedIdentity includes user_id, role, account_status, is_verified.
+
+      Given another domain receives AuthenticatedIdentity,
+      then it does not need to query the users table to know the user's role or status.
+
+      Database Impact:
+      - role column added to users (enum or string, default USER)
+      - account_status column added to users (enum or string, default PENDING_VERIFICATION)
+
+  - id: AUTH-05
+    summary: "Establish AuthenticatedIdentity contract for all domains"
+    priority: Highest
+    labels:
+      - backend
+      - auth
+      - mvp
+    description: |
+      As every TalkTribe domain (Profile, Matching, Friendship, Presence, Pairing, Calls),
+      I need a typed AuthenticatedIdentity object from the auth layer so I can authorize
+      actions without coupling to the Auth domain internals.
+
+      Current state: get_current_user returns the full User ORM model. Other domains
+      importing this receive the entire auth model including password_hash, OTP data, etc.
+
+      Target state: a clean typed contract:
+        AuthenticatedIdentity:
+          user_id: int
+          role: str        (USER | ADMIN)
+          account_status: str
+          is_verified: bool
+
+      In Scope:
+      - Define AuthenticatedIdentity as a Pydantic model or dataclass in a shared location
+      - Update get_current_user / get_current_identity dependency to return AuthenticatedIdentity
+      - Update require_authenticated_user and require_admin dependencies accordingly
+      - Ensure no other domain needs to import User ORM model just to authenticate requests
+      - Remove any auth-internal data (password_hash, refresh_token records) from the contract
+
+      Out of Scope: changing how JWT tokens are issued or validated.
+
+      Dependencies: AUTH-04 (role + account_status must exist first).
+
+      Acceptance Criteria:
+      Given a protected API endpoint in any domain uses get_current_identity,
+      then it receives an AuthenticatedIdentity with user_id, role, account_status, is_verified.
+
+      Given another domain needs to check if a user is an admin,
+      then it can do so from AuthenticatedIdentity without importing Auth internals.
+
+      Given the Auth domain changes its internal user model,
+      then other domains depending only on AuthenticatedIdentity are not broken.
+
+  - id: AUTH-06
+    summary: "Add rate limiting to auth and OTP endpoints"
+    priority: High
+    labels:
+      - backend
+      - security
+      - auth
+      - mvp
+    description: |
+      As the TalkTribe platform, abuse-sensitive auth endpoints must be rate-limited
+      so that brute-force login attempts and OTP flooding are prevented.
+
+      Current state: no rate limiting exists on any endpoint.
+
+      Endpoints to protect:
+      - POST /register     — per IP
+      - POST /login        — per IP + per username
+      - POST /verify-email — per user
+      - POST /resend-otp   — per user with cooldown
+
+      Rate limiting backend: Redis (already in the project).
+
+      In Scope:
+      - Choose and integrate a rate limiting approach (e.g. slowapi or manual Redis counters)
+      - Apply per-IP limit on /register and /login
+      - Apply per-user limit on /verify-email and /resend-otp
+      - Apply resend cooldown on /resend-otp (e.g. 60 seconds between resends)
+      - Return 429 Too Many Requests with a stable error code on limit exceeded
+
+      Out of Scope: rate limiting non-auth endpoints (those belong to their own domains).
+
+      Dependencies: AUTH-04 (account_status must exist).
+
+      Acceptance Criteria:
+      Given login is attempted too many times from the same IP in a short window,
+      then subsequent attempts receive 429 before authentication is checked.
+
+      Given resend-otp is called twice within the cooldown period,
+      then the second call returns 429 with OTP_RESEND_RATE_LIMITED.
+
+      Given a legitimate user waits out the cooldown,
+      then their next resend-otp request succeeds.
+
+  - id: AUTH-07
+    summary: "Add comprehensive auth test suite"
+    priority: High
+    labels:
+      - backend
+      - testing
+      - auth
+      - mvp
+    description: |
+      As a developer, I need a comprehensive auth test suite so that security
+      regressions are caught automatically before any dependent domain is built.
+
+      Current state: no automated tests exist for auth.
+
+      Tests required (from docs/workflows/authentication.md §36):
+
+      Registration:
+      - valid registration succeeds
+      - duplicate username rejected
+      - duplicate email rejected
+      - duplicate phone rejected
+      - missing required field rejected
+
+      OTP:
+      - correct OTP verifies account
+      - wrong OTP rejected and attempt counted
+      - expired OTP rejected
+      - used OTP rejected (reuse prevention)
+      - attempt limit locks OTP
+      - resend creates new OTP and invalidates old
+
+      Login:
+      - valid credentials return token pair
+      - wrong password rejected (generic message)
+      - unknown username rejected (same generic message — no enumeration)
+      - unverified account rejected
+      - suspended account rejected
+      - blocked account rejected
+
+      Tokens:
+      - access token authorizes protected endpoint
+      - refresh returns new token pair
+      - old refresh token rejected after rotation
+      - expired refresh token rejected
+      - revoked refresh token rejected (Redis blocklist)
+      - logout revokes token
+      - logout-all revokes all sessions
+
+      Authorization:
+      - missing token returns 401
+      - invalid token returns 401
+      - regular user denied admin endpoint
+
+      Dependencies: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05
+      (all security fixes must be in place before the test suite is finalized).
+
+      Definition of Done:
+      - all listed test cases exist and pass
+      - tests use the canonical async test client and DB fixtures from ENG-04
+      - no test stores or compares plaintext OTPs
+      - CI runs this suite on every PR
