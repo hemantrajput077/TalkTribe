@@ -48,10 +48,13 @@ class TestVerifyEmail:
 
     @pytest.mark.asyncio
     async def test_nonexistent_user_returns_404(self, client):
-        response = await client.post(VERIFY_URL, json={
-            "email": "ghost@example.com",
-            "otp": "123456",
-        })
+        response = await client.post(
+            VERIFY_URL,
+            json={
+                "email": "ghost@example.com",
+                "otp": "123456",
+            },
+        )
         assert response.status_code == 404
 
     @pytest.mark.asyncio
