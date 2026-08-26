@@ -47,7 +47,6 @@ async def register(
     if await svc.check_phone_number_exist(body.phone_number):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PHONE_ALREADY_EXISTS")
 
-
     user = await svc.create_user(
         username=body.username,
         email=body.email,

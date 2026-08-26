@@ -1448,7 +1448,7 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "aiosqlite" },
     { name = "bandit" },
@@ -1462,27 +1462,30 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiosmtplib" },
-    { name = "aiosqlite", marker = "extra == 'dev'", specifier = ">=0.20" },
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8" },
     { name = "fastapi", specifier = ">=0.139.2" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "pwdlib", extras = ["bcrypt"], specifier = ">=0.3.0" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.5.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "redis", specifier = ">=8.0.1" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.3" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "aiosqlite", specifier = ">=0.20" },
+    { name = "bandit", extras = ["toml"], specifier = ">=1.8" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "mypy", specifier = ">=1.11" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "ruff", specifier = ">=0.16.3" },
+]
 
 [[package]]
 name = "typing-extensions"

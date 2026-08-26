@@ -51,15 +51,17 @@ class AuthService:
 
     async def check_email_exist(self, email: str) -> bool:
         return await self.user_repo.get_by_email(email) is not None
-    async def check_phone_number_exist(self,phone_number:str)->bool:
+
+    async def check_phone_number_exist(self, phone_number: str) -> bool:
         return await self.user_repo.get_by_phone_number(phone_number) is not None
+
     # ── Registration ─────────────────────────────────────────────────────────
 
     async def create_user(
         self,
         username: str,
         email: str,
-        phone_number:str,
+        phone_number: str,
         password: str,
         full_name: str | None = None,
     ) -> User:

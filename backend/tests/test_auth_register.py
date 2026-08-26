@@ -68,7 +68,9 @@ class TestRegisterValidation:
 
     @pytest.mark.asyncio
     async def test_phone_without_plus_returns_422(self, client):
-        response = await client.post(REGISTER_URL, json={**BASE_PAYLOAD, "phone_number": "919876543210"})
+        response = await client.post(
+            REGISTER_URL, json={**BASE_PAYLOAD, "phone_number": "919876543210"}
+        )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -129,33 +131,42 @@ class TestRegisterConflicts:
     @pytest.mark.asyncio
     async def test_duplicate_username_returns_409(self, client):
         await client.post(REGISTER_URL, json=BASE_PAYLOAD)
-        response = await client.post(REGISTER_URL, json={
-            **BASE_PAYLOAD,
-            "email": "other@example.com",
-            "phone_number": "+911234567890",
-        })
+        response = await client.post(
+            REGISTER_URL,
+            json={
+                **BASE_PAYLOAD,
+                "email": "other@example.com",
+                "phone_number": "+911234567890",
+            },
+        )
         assert response.status_code == 409
         assert response.json()["detail"] == "USERNAME_ALREADY_EXISTS"
 
     @pytest.mark.asyncio
     async def test_duplicate_email_returns_409(self, client):
         await client.post(REGISTER_URL, json=BASE_PAYLOAD)
-        response = await client.post(REGISTER_URL, json={
-            **BASE_PAYLOAD,
-            "username": "otheruser",
-            "phone_number": "+911234567890",
-        })
+        response = await client.post(
+            REGISTER_URL,
+            json={
+                **BASE_PAYLOAD,
+                "username": "otheruser",
+                "phone_number": "+911234567890",
+            },
+        )
         assert response.status_code == 409
         assert response.json()["detail"] == "EMAIL_ALREADY_EXISTS"
 
     @pytest.mark.asyncio
     async def test_duplicate_phone_returns_409(self, client):
         await client.post(REGISTER_URL, json=BASE_PAYLOAD)
-        response = await client.post(REGISTER_URL, json={
-            **BASE_PAYLOAD,
-            "username": "otheruser",
-            "email": "other@example.com",
-        })
+        response = await client.post(
+            REGISTER_URL,
+            json={
+                **BASE_PAYLOAD,
+                "username": "otheruser",
+                "email": "other@example.com",
+            },
+        )
         assert response.status_code == 409
         assert response.json()["detail"] == "PHONE_ALREADY_EXISTS"
 
