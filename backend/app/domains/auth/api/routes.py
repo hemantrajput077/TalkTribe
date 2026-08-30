@@ -14,7 +14,6 @@ Auth routes — all authentication endpoints.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
@@ -42,13 +41,16 @@ async def register(
     svc: AuthService = Depends(get_auth_service),
 ):
     if await svc.check_username_exist(body.username):
-        raise HTTPException(status_code=400, detail="Username already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="USERNAME_ALREADY_EXISTS")
     if await svc.check_email_exist(body.email):
-        raise HTTPException(status_code=400, detail="Email already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="EMAIL_ALREADY_EXISTS")
+    if await svc.check_phone_number_exist(body.phone_number):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="PHONE_ALREADY_EXISTS")
 
     user = await svc.create_user(
         username=body.username,
         email=body.email,
+        phone_number=body.phone_number,
         password=body.password,
         full_name=body.full_name,
     )
@@ -159,9 +161,8 @@ async def me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/user_data", summary="List all users (admin/dev)")
-async def user_data(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User))
-    users = result.scalars().all()
+async def user_data(svc: AuthService = Depends(get_auth_service)):
+    users = await svc.get_all_users()
     if not users:
         return {"message": "No users found."}
     return users
@@ -174,14 +175,9 @@ async def user_data(db: AsyncSession = Depends(get_db)):
 )
 async def delete_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db),
+    svc: AuthService = Depends(get_auth_service),
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if user is None:
+    deleted = await svc.delete_user_by_id(user_id)
+    if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-
-    await db.delete(user)
-    await db.commit()
     return {"success": True, "message": "User deleted successfully."}

@@ -15,11 +15,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.infrastructure.repository import AuthRepository
 from app.domains.auth.infrastructure.user_model import User
+from app.domains.auth.infrastructure.user_repository import UserRepository
 from app.domains.auth.schemas.token import Token
 from app.infrastructure.cache.redis import blocklist_token
 from app.infrastructure.database.dependencies import get_db
@@ -36,23 +36,24 @@ class AuthService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.repo = AuthRepository(db)
+        self.user_repo = UserRepository(db)
 
     # ── User lookups ─────────────────────────────────────────────────────────
 
     async def get_user_by_username(self, username: str) -> User | None:
-        result = await self.db.execute(select(User).where(User.username == username))
-        return result.scalar_one_or_none()
+        return await self.user_repo.get_by_username(username)
 
     async def get_user_by_id(self, user_id: int) -> User | None:
-        result = await self.db.execute(select(User).where(User.id == user_id))
-        return result.scalar_one_or_none()
+        return await self.user_repo.get_by_id(user_id)
 
     async def check_username_exist(self, username: str) -> bool:
-        return await self.get_user_by_username(username) is not None
+        return await self.user_repo.get_by_username(username) is not None
 
     async def check_email_exist(self, email: str) -> bool:
-        result = await self.db.execute(select(User).where(User.email == email))
-        return result.scalar_one_or_none() is not None
+        return await self.user_repo.get_by_email(email) is not None
+
+    async def check_phone_number_exist(self, phone_number: str) -> bool:
+        return await self.user_repo.get_by_phone_number(phone_number) is not None
 
     # ── Registration ─────────────────────────────────────────────────────────
 
@@ -60,19 +61,29 @@ class AuthService:
         self,
         username: str,
         email: str,
+        phone_number: str,
         password: str,
         full_name: str | None = None,
     ) -> User:
-        user = User(
+        return await self.user_repo.create(
             username=username,
             email=email,
-            password=hash_password(password),
+            phone_number=phone_number,
+            password_hash=hash_password(password),
             full_name=full_name,
         )
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
-        return user
+
+    # ── Admin / dev helpers ──────────────────────────────────────────────────
+
+    async def get_all_users(self) -> list[User]:
+        return await self.user_repo.get_all()
+
+    async def delete_user_by_id(self, user_id: int) -> bool:
+        user = await self.user_repo.get_by_id(user_id)
+        if user is None:
+            return False
+        await self.user_repo.delete(user)
+        return True
 
     # ── Login ────────────────────────────────────────────────────────────────
 
