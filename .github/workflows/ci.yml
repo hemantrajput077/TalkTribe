@@ -57,7 +57,7 @@ jobs:
 
       # ── 4. Install dependencies ───────────────────────────────────────────────
       - name: Install dependencies
-        run: uv sync --all-groups --dev
+        run: uv sync --all-extras
 
       # ── 5. Ruff format check ─────────────────────────────────────────────────
       - name: Ruff format check
