@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.domain.enums import AccountStatus
 from app.domains.auth.domain.otp_utils import generate_otp
 from app.domains.auth.infrastructure.otp_repository import OtpRepository
 from app.domains.auth.infrastructure.user_model import User
@@ -41,7 +42,7 @@ async def verify_otp(
     # Both mutations commit together to stay atomic — marking the OTP used
     # and activating the user must not be split across two transactions.
     otp_record.is_used = True
-    user.is_verified = True
+    user.account_status = AccountStatus.ACTIVE
     await db.commit()
     await db.refresh(user)
     return user
@@ -59,7 +60,7 @@ async def resend_otp(db: AsyncSession, email: str) -> tuple[str, str]:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    if user.is_verified:
+    if user.account_status == AccountStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified"
         )
