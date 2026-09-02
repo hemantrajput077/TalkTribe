@@ -6,6 +6,10 @@ Covers:
 """
 
 import pytest
+from sqlalchemy import update
+
+from app.domains.auth.domain.enums import AccountStatus
+from app.domains.auth.infrastructure.user_model import User
 
 REGISTER_URL = "/api/v1/auth/register"
 VERIFY_URL = "/api/v1/auth/verify-email"
@@ -141,3 +145,48 @@ class TestLoginFailures:
             },
         )
         assert wrong_user_resp.json()["detail"] == wrong_pass_resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_suspended_user_returns_403(self, client, db_session, mock_send_email):
+        await _setup_verified_user(client, mock_send_email)
+        await db_session.execute(
+            update(User)
+            .where(User.username == _USER["username"])
+            .values(account_status=AccountStatus.SUSPENDED)
+        )
+        await db_session.commit()
+        response = await client.post(
+            LOGIN_URL, json={"username": _USER["username"], "password": _USER["password"]}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "ACCOUNT_SUSPENDED"
+
+    @pytest.mark.asyncio
+    async def test_blocked_user_returns_403(self, client, db_session, mock_send_email):
+        await _setup_verified_user(client, mock_send_email)
+        await db_session.execute(
+            update(User)
+            .where(User.username == _USER["username"])
+            .values(account_status=AccountStatus.BLOCKED)
+        )
+        await db_session.commit()
+        response = await client.post(
+            LOGIN_URL, json={"username": _USER["username"], "password": _USER["password"]}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "ACCOUNT_BLOCKED"
+
+    @pytest.mark.asyncio
+    async def test_deleted_user_returns_403(self, client, db_session, mock_send_email):
+        await _setup_verified_user(client, mock_send_email)
+        await db_session.execute(
+            update(User)
+            .where(User.username == _USER["username"])
+            .values(account_status=AccountStatus.DELETED)
+        )
+        await db_session.commit()
+        response = await client.post(
+            LOGIN_URL, json={"username": _USER["username"], "password": _USER["password"]}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "ACCOUNT_DELETED"

@@ -9,6 +9,10 @@ Covers:
 """
 
 import pytest
+from sqlalchemy import update
+
+from app.domains.auth.domain.enums import AccountStatus
+from app.domains.auth.infrastructure.user_model import User
 
 REGISTER_URL = "/api/v1/auth/register"
 VERIFY_URL = "/api/v1/auth/verify-email"
@@ -80,6 +84,50 @@ class TestMe:
     async def test_me_with_invalid_token_returns_401(self, client):
         response = await client.get(ME_URL, headers={"Authorization": "Bearer notavalidtoken"})
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_me_returns_role_and_account_status(self, client, mock_send_email):
+        tokens = await _get_tokens(client, mock_send_email)
+        response = await client.get(
+            ME_URL, headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        )
+        data = response.json()
+        assert data["role"] == "USER"
+        assert data["account_status"] == "ACTIVE"
+
+    @pytest.mark.asyncio
+    async def test_suspended_user_cannot_access_protected_route(
+        self, client, db_session, mock_send_email
+    ):
+        tokens = await _get_tokens(client, mock_send_email)
+        await db_session.execute(
+            update(User)
+            .where(User.username == _USER["username"])
+            .values(account_status=AccountStatus.SUSPENDED)
+        )
+        await db_session.commit()
+        response = await client.get(
+            ME_URL, headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "ACCOUNT_SUSPENDED"
+
+    @pytest.mark.asyncio
+    async def test_blocked_user_cannot_access_protected_route(
+        self, client, db_session, mock_send_email
+    ):
+        tokens = await _get_tokens(client, mock_send_email)
+        await db_session.execute(
+            update(User)
+            .where(User.username == _USER["username"])
+            .values(account_status=AccountStatus.BLOCKED)
+        )
+        await db_session.commit()
+        response = await client.get(
+            ME_URL, headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "ACCOUNT_BLOCKED"
 
 
 # ── /refresh ──────────────────────────────────────────────────────────────────

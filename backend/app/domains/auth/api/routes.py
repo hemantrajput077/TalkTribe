@@ -19,11 +19,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_user
 from app.domains.auth.application.auth_service import AuthService, get_auth_service
 from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
-from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.schemas.auth import CreateUser, RegisterResponse, UserLogin
+from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.auth.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.domains.auth.schemas.token import LogoutRequest, RefreshRequest, Token
-from app.infrastructure.database.dependencies import get_db
+from app.infrastructure.database.dependencies import (
+    get_db,  # still needed by register, verify-email, resend-otp
+)
 from app.infrastructure.email.email_service import send_otp_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -145,10 +147,10 @@ async def logout(
     summary="Revoke ALL refresh tokens for the current user (all devices)",
 )
 async def logout_all(
-    current_user: User = Depends(get_current_user),
+    identity: AuthenticatedIdentity = Depends(get_current_user),
     svc: AuthService = Depends(get_auth_service),
 ):
-    await svc.logout_all(current_user.id)
+    await svc.logout_all(identity.user_id)
 
 
 @router.get(
@@ -156,8 +158,11 @@ async def logout_all(
     response_model=RegisterResponse,
     summary="Return the authenticated user's profile",
 )
-async def me(current_user: User = Depends(get_current_user)):
-    return current_user
+async def me(
+    identity: AuthenticatedIdentity = Depends(get_current_user),
+    svc: AuthService = Depends(get_auth_service),
+):
+    return await svc.get_user_by_id(identity.user_id)
 
 
 @router.get("/user_data", summary="List all users (admin/dev)")

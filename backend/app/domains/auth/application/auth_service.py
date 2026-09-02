@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domains.auth.domain.enums import AccountStatus
 from app.domains.auth.infrastructure.repository import AuthRepository
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.infrastructure.user_repository import UserRepository
@@ -104,11 +105,19 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled."
             )
-        if not user.is_verified:
+
+        _REJECTED_STATUSES = {
+            AccountStatus.PENDING_VERIFICATION: "EMAIL_NOT_VERIFIED",
+            AccountStatus.SUSPENDED: "ACCOUNT_SUSPENDED",
+            AccountStatus.BLOCKED: "ACCOUNT_BLOCKED",
+            AccountStatus.DELETED: "ACCOUNT_DELETED",
+        }
+        if user.account_status in _REJECTED_STATUSES:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Email not verified. Please verify your email using the OTP sent to your inbox.",
+                detail=_REJECTED_STATUSES[user.account_status],
             )
+
         return user
 
     async def login(self, username: str, password: str) -> Token:

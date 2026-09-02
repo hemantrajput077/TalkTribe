@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.domains.auth.domain.enums import AccountStatus, UserRole
+
 
 class CreateUser(BaseModel):
     model_config = ConfigDict(
@@ -83,7 +85,8 @@ class RegisterResponse(BaseModel):
     email: EmailStr
     phone_number: str
     is_active: bool
-    is_verified: bool
+    role: UserRole
+    account_status: AccountStatus
     created_at: datetime
 
 
