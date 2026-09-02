@@ -1,8 +1,13 @@
 """
 API-level FastAPI dependencies.
 
-get_current_user lives here — at the transport boundary — so every future domain
-can use it via Depends(get_current_user) without importing the auth service module.
+get_current_identity lives here — at the transport boundary — so every future
+domain can Depends(get_current_identity) without importing the auth service.
+
+Guard hierarchy:
+  get_current_identity     → any valid, active, verified-enough user
+  require_authenticated_user → semantic alias; use for routes that need any user
+  require_admin            → same as above + role must be ADMIN
 """
 
 from fastapi import Depends, HTTPException, status
@@ -10,7 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.auth.domain.enums import AccountStatus
+from app.domains.auth.domain.enums import AccountStatus, UserRole
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.infrastructure.cache.redis import is_blocklisted
@@ -27,13 +32,13 @@ _REJECTED_STATUSES = {
 }
 
 
-async def get_current_user(
+async def get_current_identity(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> AuthenticatedIdentity:
     """
     Validate the Bearer token, read role + account_status from DB, and return
-    AuthenticatedIdentity. Any domain can Depends(get_current_user) without
+    AuthenticatedIdentity. Any domain can Depends(get_current_identity) without
     importing auth infrastructure.
     """
     token = credentials.credentials
@@ -75,3 +80,22 @@ async def get_current_user(
         account_status=user.account_status,
         is_verified=user.account_status != AccountStatus.PENDING_VERIFICATION,
     )
+
+
+async def require_authenticated_user(
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
+) -> AuthenticatedIdentity:
+    """Pass-through guard for routes that require any authenticated user."""
+    return identity
+
+
+async def require_admin(
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
+) -> AuthenticatedIdentity:
+    """Guard that allows only users with role ADMIN."""
+    if identity.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return identity

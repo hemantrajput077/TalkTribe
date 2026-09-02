@@ -16,7 +16,7 @@ Auth routes — all authentication endpoints.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_identity, require_admin
 from app.domains.auth.application.auth_service import AuthService, get_auth_service
 from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
 from app.domains.auth.schemas.auth import CreateUser, RegisterResponse, UserLogin
@@ -147,7 +147,7 @@ async def logout(
     summary="Revoke ALL refresh tokens for the current user (all devices)",
 )
 async def logout_all(
-    identity: AuthenticatedIdentity = Depends(get_current_user),
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
     svc: AuthService = Depends(get_auth_service),
 ):
     await svc.logout_all(identity.user_id)
@@ -159,14 +159,17 @@ async def logout_all(
     summary="Return the authenticated user's profile",
 )
 async def me(
-    identity: AuthenticatedIdentity = Depends(get_current_user),
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
     svc: AuthService = Depends(get_auth_service),
 ):
     return await svc.get_user_by_id(identity.user_id)
 
 
-@router.get("/user_data", summary="List all users (admin/dev)")
-async def user_data(svc: AuthService = Depends(get_auth_service)):
+@router.get("/user_data", summary="List all users (admin only)")
+async def user_data(
+    _: AuthenticatedIdentity = Depends(require_admin),
+    svc: AuthService = Depends(get_auth_service),
+):
     users = await svc.get_all_users()
     if not users:
         return {"message": "No users found."}
@@ -176,10 +179,11 @@ async def user_data(svc: AuthService = Depends(get_auth_service)):
 @router.delete(
     "/users/{user_id}",
     status_code=status.HTTP_200_OK,
-    summary="Delete a user by ID",
+    summary="Delete a user by ID (admin only)",
 )
 async def delete_user(
     user_id: int,
+    _: AuthenticatedIdentity = Depends(require_admin),
     svc: AuthService = Depends(get_auth_service),
 ):
     deleted = await svc.delete_user_by_id(user_id)
