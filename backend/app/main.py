@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.v1.router import router as api_router
 from app.infrastructure.cache import redis as redis_client
@@ -35,6 +36,20 @@ app = FastAPI(
     redoc_url="/api/redoc",  # ReDoc documentation
     openapi_url="/api/openapi.json",  # OpenAPI schema
 )
+
+# Reverse-proxy IP resolution.
+# When TRUSTED_PROXY_IPS is set, Uvicorn's ProxyHeadersMiddleware rewrites
+# request.client to the real client IP taken from X-Forwarded-For — but ONLY
+# when the request arrives from a listed trusted proxy. This keeps rate limiting
+# correct in production without trusting arbitrary client-supplied headers.
+# Leave TRUSTED_PROXY_IPS empty in local development.
+if settings.TRUSTED_PROXY_IPS:
+    _trusted: list[str] | str = (
+        settings.TRUSTED_PROXY_IPS
+        if settings.TRUSTED_PROXY_IPS == "*"
+        else [ip.strip() for ip in settings.TRUSTED_PROXY_IPS.split(",")]
+    )
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=_trusted)
 
 # Configure CORS (Cross-Origin Resource Sharing)
 # This allows our frontend (running on port 5173) to make requests to backend (port 8000)

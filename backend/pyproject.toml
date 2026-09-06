@@ -32,6 +32,7 @@ packages = ["app"]
 dev = [
     "aiosqlite>=0.20",
     "bandit[toml]>=1.8",
+    "fakeredis[lua]>=2.0",
     "httpx>=0.28",
     "mypy>=1.11",
     "pytest>=8.0",

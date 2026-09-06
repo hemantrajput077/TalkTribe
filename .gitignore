@@ -42,5 +42,5 @@ docker-compose.override.yml
 postgres_data/
 redis_data/
 
-# Docs
-# docs/
+# Docs — learning notes are personal and not committed
+docs/guides/rate-limiting.md

@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     # ── Redis ─────────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # ── Reverse proxy ─────────────────────────────────────────────────────────
+    # Comma-separated list of trusted proxy IPs whose X-Forwarded-For header
+    # is used to resolve the real client IP for rate limiting.
+    # Leave empty in local development (no proxy).
+    # Common values:
+    #   "127.0.0.1"          — local nginx on the same machine
+    #   "10.0.0.0/8"         — private-network load balancer (e.g. AWS ALB on a VPC)
+    #   "*"                  — trust all proxies (only safe when the app is
+    #                          behind a firewall that blocks direct internet access)
+    TRUSTED_PROXY_IPS: str = ""
+
     # ── JWT ───────────────────────────────────────────────────────────────────
     # Two separate secrets: access tokens and refresh tokens use different keys.
     # This prevents a refresh token from being accepted where an access token is expected.
@@ -50,6 +61,25 @@ class Settings(BaseSettings):
     # ── OTP ───────────────────────────────────────────────────────────────────
     OTP_LENGTH: int = 6
     OTP_EXPIRE_MINUTES: int = 5
+
+    # ── Rate Limiting ─────────────────────────────────────────────────────────
+    # Register: 5 attempts per IP per hour
+    RATE_LIMIT_REGISTER_IP_MAX: int = 5
+    RATE_LIMIT_REGISTER_WINDOW_SECONDS: int = 3600
+
+    # Login: 10 attempts per IP, 5 per username, per 15-minute window
+    RATE_LIMIT_LOGIN_IP_MAX: int = 10
+    RATE_LIMIT_LOGIN_USERNAME_MAX: int = 5
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 900
+
+    # Verify email: 5 attempts per email per hour
+    RATE_LIMIT_VERIFY_EMAIL_MAX: int = 5
+    RATE_LIMIT_VERIFY_EMAIL_WINDOW_SECONDS: int = 3600
+
+    # Resend OTP: 3 sends per email per hour; 60-second cooldown between sends
+    RATE_LIMIT_RESEND_OTP_MAX: int = 3
+    RATE_LIMIT_RESEND_OTP_WINDOW_SECONDS: int = 3600
+    RATE_LIMIT_RESEND_OTP_COOLDOWN_SECONDS: int = 60
 
     # ── SMTP ──────────────────────────────────────────────────────────────────
     SMTP_HOST: str = "smtp.gmail.com"
