@@ -117,3 +117,33 @@ class TestResendOtp:
         response = await client.post(RESEND_URL, json={"email": _USER["email"]})
         assert response.status_code == 400
         assert "already verified" in response.json()["detail"].lower()
+
+
+class TestOtpExpiry:
+    @pytest.mark.asyncio
+    async def test_expired_otp_returns_400(self, client, db_session, mock_send_email):
+        """An OTP whose expires_at is in the past must be rejected."""
+        from datetime import datetime, timedelta
+
+        from sqlalchemy import update
+
+        from app.domains.auth.infrastructure.otp_model import Otp
+
+        await _register_and_capture_otp(client, mock_send_email)
+
+        # Wind the clock back on all OTPs for this user so they appear expired.
+        await db_session.execute(
+            update(Otp).values(expires_at=datetime.utcnow() - timedelta(minutes=10))
+        )
+        await db_session.commit()
+
+        response = await client.post(VERIFY_URL, json={"email": _USER["email"], "otp": "000000"})
+        # No valid OTP exists (expired) → 400
+        assert response.status_code == 400
+
+
+# TODO AUTH-07: OTP attempt limit (test_attempt_limit_locks_otp) is deferred.
+# The Otp model has no `attempts` counter yet. Once AUTH-07 Option A is
+# implemented (add attempts column + service enforcement), add:
+#   - test that submitting wrong OTP 5 times returns 429
+#   - test that a new OTP resets the counter
