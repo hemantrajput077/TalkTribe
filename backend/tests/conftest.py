@@ -105,6 +105,14 @@ async def client(db_session, mock_send_email):
             "app.domains.auth.application.auth_service.blocklist_token",
             new_callable=AsyncMock,
         ),
+        # Rate-limit functions are no-ops by default so existing tests are unaffected.
+        # Individual rate-limit tests override these with nested patches.
+        patch("app.domains.auth.api.routes.check_register_rate_limit", new_callable=AsyncMock),
+        patch("app.domains.auth.api.routes.check_login_rate_limit", new_callable=AsyncMock),
+        patch("app.domains.auth.api.routes.check_verify_email_rate_limit", new_callable=AsyncMock),
+        patch("app.domains.auth.api.routes.check_resend_otp_rate_limit", new_callable=AsyncMock),
+        patch("app.domains.auth.api.routes.acquire_resend_otp_cooldown", new_callable=AsyncMock),
+        patch("app.domains.auth.api.routes.release_resend_otp_cooldown", new_callable=AsyncMock),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app),

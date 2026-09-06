@@ -63,3 +63,22 @@ Prioritize:
 **Understanding → Correctness → Clean Code → Testing → Performance → Development Speed**
 
 I should understand the code and architecture we create. Do not prioritize quickly generating the entire project over helping me learn how to build it.
+
+## Production-Safety Rule
+
+Before implementing any feature, proactively identify anything that would work locally but break in production. Flag it explicitly before writing code, not after.
+
+Common production differences to always check:
+
+- **Reverse proxy / IP extraction** — `request.client.host` returns the proxy IP in production. Use `ProxyHeadersMiddleware` with a configurable `TRUSTED_PROXY_IPS` setting so the same code works in both environments.
+- **Environment-specific config** — never hardcode values that differ between local and production. Put them in `Settings` with safe local defaults and document what to set in production.
+- **External services** — SMTP, Redis, S3, etc. may be mocked locally but must be real in production. Ensure the code path is the same; only the credentials differ.
+- **CORS origins** — `localhost` origins must not be allowed in production. Keep them in `BACKEND_CORS_ORIGINS` so they are configurable.
+- **Database URLs** — SQLite works locally; PostgreSQL in production. The connection string in `DATABASE_URL` must not be assumed to be one dialect.
+- **Secret keys** — local defaults must never reach production. Validate key strength in Settings validators.
+- **Async concurrency** — behaviour that works in a single-worker dev server may have race conditions under multiple workers. Prefer atomic operations (Redis Lua, DB transactions) over read-modify-write patterns.
+
+When implementing, always use the pattern:
+1. Behaviour controlled by a setting with a safe local default.
+2. Production value set via `.env` — never via code branching on `APP_ENV`.
+3. Document the production value in `.env.example` or the relevant doc.

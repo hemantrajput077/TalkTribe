@@ -13,16 +13,25 @@ Auth routes — all authentication endpoints.
   DELETE /auth/users/{id}    → delete user
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_identity, require_admin
 from app.domains.auth.application.auth_service import AuthService, get_auth_service
 from app.domains.auth.application.otp_service import create_otp, resend_otp, verify_otp
+from app.domains.auth.application.rate_limit_service import (
+    acquire_resend_otp_cooldown,
+    check_login_rate_limit,
+    check_register_rate_limit,
+    check_resend_otp_rate_limit,
+    check_verify_email_rate_limit,
+    release_resend_otp_cooldown,
+)
 from app.domains.auth.schemas.auth import CreateUser, RegisterResponse, UserLogin
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.auth.schemas.otp import OTPResponse, ResendOTPRequest, VerifyEmailRequest
 from app.domains.auth.schemas.token import LogoutRequest, RefreshRequest, Token
+from app.infrastructure.cache.rate_limiter import get_client_ip
 from app.infrastructure.database.dependencies import (
     get_db,  # still needed by register, verify-email, resend-otp
 )
@@ -38,10 +47,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     summary="Create a new user account and send OTP for verification",
 )
 async def register(
+    request: Request,
     body: CreateUser,
     db: AsyncSession = Depends(get_db),
     svc: AuthService = Depends(get_auth_service),
 ):
+    await check_register_rate_limit(get_client_ip(request))
     if await svc.check_username_exist(body.username):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="USERNAME_ALREADY_EXISTS")
     if await svc.check_email_exist(body.email):
@@ -80,6 +91,7 @@ async def verify_email(
     body: VerifyEmailRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    await check_verify_email_rate_limit(body.email)
     await verify_otp(db, body.email, body.otp, purpose="REGISTER")
     return OTPResponse(message="Email verified successfully! You can now login.")
 
@@ -93,10 +105,20 @@ async def resend_otp_endpoint(
     body: ResendOTPRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    otp_code, username = await resend_otp(db, body.email)
-    email_sent = await send_otp_email(body.email, otp_code, username)
+    await check_resend_otp_rate_limit(body.email)
+    await acquire_resend_otp_cooldown(body.email)
+
+    try:
+        otp_code, username = await resend_otp(db, body.email)
+        email_sent = await send_otp_email(body.email, otp_code, username)
+    except HTTPException:
+        # OTP creation or a service-layer error — release the cooldown so the
+        # user is not locked out for something that never actually sent.
+        await release_resend_otp_cooldown(body.email)
+        raise
 
     if not email_sent:
+        await release_resend_otp_cooldown(body.email)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send verification email. Please try again later.",
@@ -111,9 +133,11 @@ async def resend_otp_endpoint(
     summary="Login and receive access + refresh tokens",
 )
 async def login(
+    request: Request,
     body: UserLogin,
     svc: AuthService = Depends(get_auth_service),
 ):
+    await check_login_rate_limit(get_client_ip(request), body.username)
     return await svc.login(body.username, body.password)
 
 
