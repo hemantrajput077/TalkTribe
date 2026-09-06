@@ -86,6 +86,29 @@ class TestMe:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_blocklisted_access_token_returns_401(self, client, mock_send_email):
+        """A token whose JTI has been added to the Redis blocklist must be rejected.
+
+        The global conftest patches is_blocklisted to always return False.
+        This test overrides that patch for a single call to return True,
+        simulating what happens after logout when the JTI is blocklisted.
+        """
+        from unittest.mock import AsyncMock, patch
+
+        tokens = await _get_tokens(client, mock_send_email)
+
+        with patch(
+            "app.api.dependencies.is_blocklisted",
+            new_callable=AsyncMock,
+            return_value=True,  # simulate blocklisted JTI
+        ):
+            response = await client.get(
+                ME_URL,
+                headers={"Authorization": f"Bearer {tokens['access_token']}"},
+            )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_me_returns_role_and_account_status(self, client, mock_send_email):
         tokens = await _get_tokens(client, mock_send_email)
         response = await client.get(
@@ -186,6 +209,31 @@ class TestRefresh:
             },
         )
         assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_old_refresh_token_rejected_after_rotation(self, client, mock_send_email):
+        """After rotating, the old refresh token must not be usable (reuse attack)."""
+        tokens = await _get_tokens(client, mock_send_email)
+
+        # First rotation — consumes the original refresh token
+        rotate_resp = await client.post(
+            REFRESH_URL,
+            json={
+                "refresh_token": tokens["refresh_token"],
+                "access_token": tokens["access_token"],
+            },
+        )
+        assert rotate_resp.status_code == 200
+
+        # Attempting to reuse the now-revoked original refresh token must fail
+        reuse_resp = await client.post(
+            REFRESH_URL,
+            json={
+                "refresh_token": tokens["refresh_token"],  # old — already revoked
+                "access_token": tokens["access_token"],
+            },
+        )
+        assert reuse_resp.status_code == 401
 
 
 # ── /logout ───────────────────────────────────────────────────────────────────
