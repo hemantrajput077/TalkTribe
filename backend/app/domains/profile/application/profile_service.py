@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,10 +21,16 @@ class ProfileService:
         try:
             return await self.repo.create(user_id)
         except IntegrityError:
-            # Two concurrent requests from the same new user both saw no profile
-            # and both tried to INSERT. The UNIQUE constraint on user_id made the
-            # second one fail. Roll back and re-fetch the row the first request created.
+            # Two causes possible:
+            # 1. UNIQUE violation — a concurrent request already created the profile.
+            #    Roll back and re-fetch the row it committed.
+            # 2. FK violation — the user was deleted between auth check and INSERT.
+            #    Roll back and re-fetch returns None; raise 404 in that case.
             await self.db.rollback()
             profile = await self.repo.get_by_user_id(user_id)
-            assert profile is not None  # guaranteed: the other request just created it
+            if profile is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="USER_NOT_FOUND",
+                ) from None
             return profile

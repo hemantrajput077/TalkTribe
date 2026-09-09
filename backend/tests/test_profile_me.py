@@ -7,9 +7,21 @@ Acceptance criteria tested:
   3. New user with no existing profile row → profile is lazy-created, HTTP 200.
   4. Second call is idempotent — same user_id, no duplicate row.
   5. Response never contains sensitive fields (password, role, account_status).
+
+Service-layer unit tests (mocked repository):
+  6. Profile already exists → returned directly, no INSERT attempted.
+  7. IntegrityError + profile found on re-fetch → concurrent creation recovered.
+  8. IntegrityError + profile None on re-fetch → FK violation → HTTP 404.
 """
 
+from unittest.mock import AsyncMock
+
 import pytest
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
+
+from app.domains.profile.application.profile_service import ProfileService
+from app.domains.profile.infrastructure.profile_model import Profile
 
 REGISTER_URL = "/api/v1/auth/register"
 VERIFY_URL = "/api/v1/auth/verify-email"
@@ -79,3 +91,82 @@ class TestProfileMe:
             assert field not in data, (
                 f"Sensitive field '{field}' must not appear in profile response"
             )
+
+
+class TestProfileServiceUnit:
+    """
+    Unit tests for ProfileService.get_or_create_profile.
+    These bypass the HTTP stack and mock the repository directly so we can
+    simulate IntegrityError paths that cannot be triggered through a real DB in tests.
+    """
+
+    @pytest.mark.asyncio
+    async def test_existing_profile_returned_directly(self):
+        mock_db = AsyncMock()
+        existing = Profile(user_id=1)
+
+        svc = ProfileService(mock_db)
+        svc.repo = AsyncMock()
+        svc.repo.get_by_user_id.return_value = existing
+
+        result = await svc.get_or_create_profile(1)
+
+        assert result is existing
+        svc.repo.create.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_new_profile_created_when_none_exists(self):
+        mock_db = AsyncMock()
+        created = Profile(user_id=1)
+
+        svc = ProfileService(mock_db)
+        svc.repo = AsyncMock()
+        svc.repo.get_by_user_id.return_value = None
+        svc.repo.create.return_value = created
+
+        result = await svc.get_or_create_profile(1)
+
+        assert result is created
+        svc.repo.create.assert_awaited_once_with(1)
+
+    @pytest.mark.asyncio
+    async def test_integrity_error_concurrent_creation_recovers(self):
+        """
+        Simulates: two requests race, both see no profile, both try INSERT.
+        The second one hits IntegrityError (UNIQUE), rolls back, re-fetches
+        the row the first request committed — and returns it successfully.
+        """
+        mock_db = AsyncMock()
+        recovered = Profile(user_id=1)
+
+        svc = ProfileService(mock_db)
+        svc.repo = AsyncMock()
+        # First call (pre-create check) → None; second call (post-rollback) → found
+        svc.repo.get_by_user_id.side_effect = [None, recovered]
+        svc.repo.create.side_effect = IntegrityError(None, None, Exception("unique violation"))
+
+        result = await svc.get_or_create_profile(1)
+
+        assert result is recovered
+        mock_db.rollback.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_integrity_error_fk_violation_raises_404(self):
+        """
+        Simulates: user is deleted between auth check and INSERT.
+        IntegrityError is caught, rollback runs, but re-fetch returns None
+        because no profile was ever created. Expects HTTP 404.
+        """
+        mock_db = AsyncMock()
+
+        svc = ProfileService(mock_db)
+        svc.repo = AsyncMock()
+        svc.repo.get_by_user_id.return_value = None  # None on both calls
+        svc.repo.create.side_effect = IntegrityError(None, None, Exception("fk violation"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_or_create_profile(1)
+
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.detail == "USER_NOT_FOUND"
+        mock_db.rollback.assert_awaited_once()
