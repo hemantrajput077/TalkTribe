@@ -27,6 +27,7 @@ from sqlalchemy.pool import StaticPool
 import app.domains.auth.infrastructure.otp_model  # noqa: F401
 import app.domains.auth.infrastructure.token_model  # noqa: F401
 import app.domains.auth.infrastructure.user_model  # noqa: F401
+import app.domains.profile.infrastructure.profile_model  # noqa: F401
 from app.infrastructure.database.base import Base
 
 _TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
