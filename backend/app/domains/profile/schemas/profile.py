@@ -16,6 +16,7 @@ class ProfileResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class ProfileUpdate(BaseModel):
     bio: str | None = None
     profession: str | None = None

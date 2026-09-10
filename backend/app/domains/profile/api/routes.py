@@ -4,13 +4,13 @@ Profile routes.
   GET /profiles/me  → return the authenticated user's own profile (lazy-create if missing)
 """
 
-from fastapi import APIRouter, Depends, Body, Path
+from fastapi import APIRouter, Body, Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_identity , require_admin
+from app.api.dependencies import get_current_identity, require_admin
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.profile.application.profile_service import ProfileService
-from app.domains.profile.schemas.profile import ProfileResponse , ProfileUpdate
+from app.domains.profile.schemas.profile import ProfileResponse, ProfileUpdate
 from app.infrastructure.database.dependencies import get_db
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -44,12 +44,15 @@ async def update_my_profile(
     profile = await svc.update_profile(identity.user_id, profile_data)
     return ProfileResponse.model_validate(profile)
 
-@router.get("/{profile_id}",
-     response_model = ProfileResponse,
-     summary  = "Get a profile by user ID",
-     response_description = "The profile with the specified user ID")
+
+@router.get(
+    "/{profile_id}",
+    response_model=ProfileResponse,
+    summary="Get a profile by user ID",
+    response_description="The profile with the specified user ID",
+)
 async def get_profile_by_id(
-    profile_id: int = Path(..., title = "The ID of the profile to retrieve"),
+    profile_id: int = Path(..., title="The ID of the profile to retrieve"),
     identity: AuthenticatedIdentity = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileResponse:

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.profile.infrastructure.profile_model import Profile
 from app.domains.profile.infrastructure.profile_repository import ProfileRepository
+from app.domains.profile.schemas.profile import ProfileUpdate
 
 
 class ProfileService:
