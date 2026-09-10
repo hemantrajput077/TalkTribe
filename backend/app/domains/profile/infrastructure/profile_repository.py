@@ -20,3 +20,19 @@ class ProfileRepository:
         await self.db.commit()
         await self.db.refresh(profile)
         return profile
+
+
+    async def get_profile_by_id(self, profile_id: int) -> Profile | None:
+        result = await self.db.execute(select(Profile).where(Profile.id == profile_id))
+        return result.scalar_one_or_none()
+
+    async def update_profile(self, user_id: int, profile_data: ProfileUpdate) -> Profile:
+        profile = await self.get_by_user_id(user_id)
+        profile.bio = profile_data.bio
+        profile.profession = profile_data.profession
+        profile.location = profile_data.location
+        profile.avatar_url = profile_data.avatar_url
+        self.db.add(profile)
+        await self.db.commit()
+        await self.db.refresh(profile)
+        return profile
