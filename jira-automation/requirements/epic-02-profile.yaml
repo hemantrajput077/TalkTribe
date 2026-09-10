@@ -1,0 +1,367 @@
+# TalkTribe — EPIC-02 User Profile & Language Foundation
+# Source: docs/planning/epic-02-jira-stories.md
+#
+# Run:  python create_demo.py requirements/epic-02-profile.yaml
+#
+# PROF-07 (profile photo) is excluded — BLOCKED_BY_DECISION (storage provider not yet selected).
+# It will be added as a separate story once the storage infrastructure decision is made.
+
+epic:
+  summary: "EPIC-02 — User Profile & Language Foundation"
+  planning_id: "EPIC-02"
+  milestone: "M2"
+  labels:
+    - backend
+    - profile
+    - language
+    - mvp
+  description: |
+    Build the learner identity used by every later milestone in TalkTribe.
+
+    Matching needs profile and language data to compute compatibility scores.
+    Pairing needs profile eligibility before queuing a user. Calls need a safe
+    profile summary for the peer display. Without M2, none of M3 through M8
+    can function correctly.
+
+    Blocked by: M1 Auth Stabilization (AuthenticatedIdentity contract — delivered).
+
+    Reference: docs/planning/epic-02-jira-stories.md
+               docs/architecture/database-design.md
+               docs/architecture/architecture.md
+
+stories:
+  - id: PROF-01
+    summary: "Learner can view their own profile"
+    priority: High
+    labels:
+      - backend
+      - profile
+      - database
+      - mvp
+    description: |
+      As a learner, I want to retrieve my own profile so that I can see what
+      information is currently saved and know what to complete.
+
+      This is the read foundation for the entire profile domain. Before a user
+      can update anything, the system must be able to return their own profile.
+      It also unblocks PROF-02 (update), PROF-03 (peer view), and the profile
+      completion check in PROF-06.
+
+      A profile record is created automatically on first retrieval if one does
+      not exist (lazy creation). The profile is permanently linked to the
+      authenticated user — a user can never retrieve someone else's full profile
+      through this endpoint.
+
+      In Scope:
+      - profiles database table and Alembic migration
+      - Auto-create a profile row linked to users.id on first retrieval
+      - GET /api/v1/profiles/me — returns the authenticated user's full profile
+      - Response includes: user_id, bio, profession, location, avatar_url, created_at, updated_at
+      - Authorization: requires valid authenticated identity (get_current_identity)
+      - Domain follows modular monolith structure under app/domains/profile/
+
+      Out of Scope: profile update (PROF-02), peer view (PROF-03), interests (PROF-04),
+      languages (PROF-05), photo upload (PROF-07).
+
+      Dependencies: AUTH-05 AuthenticatedIdentity contract (delivered).
+
+      Acceptance Criteria:
+      Given an authenticated learner with a valid access token,
+      when they call GET /api/v1/profiles/me,
+      then the API returns HTTP 200 with the user's profile fields.
+
+      Given a request with no access token,
+      when GET /api/v1/profiles/me is called,
+      then the API returns HTTP 401.
+
+      Given a newly registered user with no profile row,
+      when they call GET /api/v1/profiles/me,
+      then a profile record is created with null optional fields and HTTP 200 is returned.
+
+      Given any authenticated user,
+      when they call GET /api/v1/profiles/me,
+      then the response never contains password_hash, role, account_status, or OTP data.
+
+      Database Impact:
+      - New profiles table with user_id FK referencing users.id ON DELETE CASCADE
+      - Unique constraint on user_id (one profile per user)
+      - Index on user_id for fast lookups
+
+  - id: PROF-02
+    summary: "Learner can create and update their own profile"
+    priority: High
+    labels:
+      - backend
+      - profile
+      - mvp
+    description: |
+      As a learner, I want to update my bio, profession, and location so that
+      other users and the matching system can learn who I am.
+
+      A complete profile is required before a user can enter matching or pairing.
+      Profile update is how a user works toward profile completion. The matching
+      score will use profession and location as secondary signals.
+
+      In Scope:
+      - PATCH /api/v1/profiles/me — partial update of own profile
+      - Updatable fields: bio (max 500 chars), profession (max 100 chars), location (max 100 chars)
+      - Returns the updated full self-profile on success
+      - Only the authenticated owner can update their own profile
+      - Partial updates — any combination of the three fields may be sent
+      - extra fields rejected by Pydantic (extra="forbid")
+
+      Out of Scope: photo upload (PROF-07), language update (PROF-05),
+      interests update (PROF-04), updating another user's profile.
+
+      Dependencies: PROF-01 — profiles table and GET /profiles/me must exist.
+
+      Acceptance Criteria:
+      Given an authenticated learner,
+      when they send PATCH /api/v1/profiles/me with {"bio": "I love learning English"},
+      then the bio is saved and the API returns HTTP 200 with the updated profile.
+
+      Given an authenticated learner with an existing bio,
+      when they send PATCH /api/v1/profiles/me with only {"location": "Mumbai"},
+      then only location is changed and bio retains its previous value.
+
+      Given an authenticated learner,
+      when they send a bio longer than 500 characters,
+      then the API returns HTTP 422.
+
+      Given no access token,
+      when PATCH /api/v1/profiles/me is called,
+      then the API returns HTTP 401.
+
+      Given an authenticated learner updates their profile,
+      when the response is returned,
+      then updated_at reflects the time of the update.
+
+      Database Impact: No new tables. updated_at refreshed on every write to profiles.
+
+  - id: PROF-03
+    summary: "Authenticated user can view a peer's safe profile"
+    priority: High
+    labels:
+      - backend
+      - profile
+      - security
+      - mvp
+    description: |
+      As a learner, I want to view another user's profile so that I can learn
+      about a potential language partner before connecting.
+
+      Peer profile visibility is required by Matching (to show candidate cards),
+      Friendship (to display a requester's profile), and Calls (to show the peer
+      during a session. The peer profile response must never expose auth-owned or
+      private fields. The PeerProfileResponse schema becomes the SafeProfileSummary
+      contract consumed by the Matching and Pairing domains.
+
+      In Scope:
+      - GET /api/v1/profiles/{user_id} — authenticated user views another user's profile
+      - Response includes only safe public fields: user_id, bio, profession, location, avatar_url
+      - Response must NOT include: email, phone, password, role, account_status, refresh tokens
+      - Only ACTIVE accounts are viewable — others return 404
+      - Requester must be authenticated
+
+      Out of Scope: language/interest data in this response (PROF-04, PROF-05),
+      blocking enforcement (BLOCK domain M3).
+
+      Dependencies: PROF-01 — profiles table must exist.
+
+      Acceptance Criteria:
+      Given an authenticated learner and another user with an ACTIVE account,
+      when they call GET /api/v1/profiles/{user_id},
+      then the API returns HTTP 200 with safe profile fields.
+
+      Given a user_id that does not exist or belongs to a SUSPENDED/BLOCKED/DELETED account,
+      when GET /api/v1/profiles/{user_id} is called,
+      then the API returns HTTP 404.
+
+      Given any valid peer profile response,
+      then the response does not contain email, phone_number, password_hash, role,
+      account_status, OTP data, or refresh token data.
+
+      Given no access token,
+      when GET /api/v1/profiles/{user_id} is called,
+      then the API returns HTTP 401.
+
+      Security: return 404 for inactive users, not 403 — do not reveal account status to peers.
+
+      Database Impact: No new tables. Reads from profiles and checks users.account_status.
+
+  - id: PROF-04
+    summary: "Learner can add and manage interests"
+    priority: High
+    labels:
+      - backend
+      - profile
+      - database
+      - mvp
+    description: |
+      As a learner, I want to select topics I am interested in so that I am
+      matched with peers who share similar interests.
+
+      Interests are the primary non-language signal for the matching score in M3.
+      A learner with interests selected will receive better-quality matches.
+      Interests are optional for profile completion but strongly encouraged for
+      better match quality.
+
+      In Scope:
+      - interests table — predefined list seeded at startup or migration
+      - user_interests join table — which interests a user has selected
+      - GET /api/v1/interests — list all available predefined interests (no auth required)
+      - PUT /api/v1/profiles/me/interests — replace the authenticated user's interest selections
+      - Response includes selected interest IDs and names
+      - Seed interests: Music, Travel, Technology, Sports, Movies, Books, Cooking, Gaming,
+        Art, Science, Business, Fashion, Nature, Fitness
+      - Maximum 10 interests per user enforced
+      - PUT replaces all interests — delete-then-insert semantics
+
+      Out of Scope: matching scoring (M3), interest-based search (M3),
+      admin management of the interests list.
+
+      Dependencies: PROF-02 — profiles table and update pattern must exist.
+
+      Acceptance Criteria:
+      Given any authenticated user,
+      when they call GET /api/v1/interests,
+      then the API returns HTTP 200 with the full predefined interest list.
+
+      Given an authenticated learner,
+      when they call PUT /api/v1/profiles/me/interests with a list of up to 10 interest IDs,
+      then their interest selections are saved and the API returns HTTP 200.
+
+      Given a learner with 3 existing interests,
+      when they call PUT with 2 different interest IDs,
+      then only the 2 new interests are saved and the previous 3 are removed.
+
+      Given an authenticated learner submitting 11 or more interest IDs,
+      then the API returns HTTP 422.
+
+      Given an interest ID that does not exist in the predefined list,
+      then the API returns HTTP 422.
+
+      Database Impact:
+      - interests table with id and name columns (unique name constraint)
+      - user_interests join table (user_id, interest_id) with composite PK
+      - Seed data migration for predefined interests
+
+  - id: PROF-05
+    summary: "Learner can configure native and learning languages with proficiency"
+    priority: Highest
+    labels:
+      - backend
+      - profile
+      - database
+      - mvp
+    description: |
+      As a learner, I want to declare which language I speak natively and which
+      I am learning so that the platform can match me with the right conversation
+      partners.
+
+      Language configuration is the most critical signal for TalkTribe's core value
+      proposition. Matching uses it to find compatible learners. Pairing uses it to
+      confirm both users are practicing the same target language. Profile eligibility
+      (PROF-06) requires at least one LEARNING language before a user can be matched
+      or paired. CEFR proficiency levels (A1 through C2) are used for learning languages.
+
+      In Scope:
+      - languages reference table — seeded with English for MVP
+      - user_languages join table — user to language with role and proficiency
+      - Three language roles: NATIVE, FLUENT, LEARNING
+      - CEFR proficiency levels: A1, A2, B1, B2, C1, C2 (not required for NATIVE role)
+      - GET /api/v1/languages — list all supported languages (no auth required)
+      - PUT /api/v1/profiles/me/languages — replace the user's full language configuration
+      - Validation: exactly one NATIVE language required
+      - Validation: LEARNING language requires a proficiency value
+      - Validation: same language cannot be NATIVE and LEARNING simultaneously
+      - PUT replaces all language entries — full replace semantics
+
+      Out of Scope: languages other than English in the seed data for MVP,
+      language-based matching scoring (M3), admin management of language list.
+
+      Dependencies: PROF-02 — profile update pattern must exist.
+
+      Acceptance Criteria:
+      Given any authenticated user,
+      when they call GET /api/v1/languages,
+      then the API returns HTTP 200 with at least English in the list.
+
+      Given an authenticated learner,
+      when they PUT a valid language list with one NATIVE and one LEARNING entry,
+      then the configuration is saved and the API returns HTTP 200.
+
+      Given a language list with zero or two NATIVE entries,
+      when PUT /api/v1/profiles/me/languages is called,
+      then the API returns HTTP 422.
+
+      Given a LEARNING language entry with no proficiency,
+      when submitted,
+      then the API returns HTTP 422.
+
+      Given the same language_id submitted as both NATIVE and LEARNING,
+      then the API returns HTTP 422.
+
+      Given a proficiency value outside A1 A2 B1 B2 C1 C2,
+      then the API returns HTTP 422.
+
+      Database Impact:
+      - languages table (id, name, code — ISO 639-1)
+      - user_languages table (user_id, language_id, role, proficiency) with unique constraint
+        on (user_id, language_id, role)
+      - Seed migration: English (code=en)
+
+  - id: PROF-06
+    summary: "System can evaluate whether a profile is eligible (ProfileEligibility)"
+    priority: Highest
+    labels:
+      - backend
+      - profile
+      - mvp
+    description: |
+      As the TalkTribe matching and pairing system, I need to know whether a user's
+      profile is complete enough to participate so that incomplete or empty profiles
+      are never shown to other learners or placed in a pairing queue.
+
+      ProfileEligibility is an internal service contract — not a user-facing HTTP endpoint.
+      Matching (M3) calls it to exclude incomplete profiles from candidate results.
+      Pairing (M5) calls it before allowing a user to join the queue. Without this
+      contract, a user with an empty profile could appear in matches or enter a pairing
+      session with no useful identity. Rules can be tightened in later milestones.
+
+      A profile is considered eligible when it has a non-empty bio and at least one
+      LEARNING language configured. These are the minimum viable bars for MVP.
+
+      In Scope:
+      - ProfileEligibilityService in the Profile application layer
+      - Returns a boolean (eligible) and a reason string when ineligible
+      - Called by Matching and Pairing — no public HTTP endpoint
+      - Encapsulates completeness rules in one place so they can be updated centrally
+
+      Out of Scope: user-facing profile completion percentage UI, admin override of
+      eligibility, forcing profile completion before any user action.
+
+      Dependencies: PROF-02 (bio must be settable), PROF-05 (LEARNING language must be settable).
+
+      Acceptance Criteria:
+      Given a user with a non-empty bio and at least one LEARNING language,
+      when ProfileEligibilityService.check(user_id) is called,
+      then it returns eligible=True.
+
+      Given a user with no bio set,
+      when check(user_id) is called,
+      then it returns eligible=False with reason PROFILE_BIO_MISSING.
+
+      Given a user with a bio but no LEARNING language,
+      when check(user_id) is called,
+      then it returns eligible=False with reason PROFILE_LEARNING_LANGUAGE_MISSING.
+
+      Given a user with neither bio nor LEARNING language,
+      when check(user_id) is called,
+      then it returns eligible=False.
+
+      Given the Matching or Pairing domain imports ProfileEligibilityService,
+      then there are no circular import errors.
+
+      API Impact: None — internal service contract only.
+      Database Impact: No new tables. Reads from profiles and user_languages.
