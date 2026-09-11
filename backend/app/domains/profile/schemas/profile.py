@@ -15,3 +15,10 @@ class ProfileResponse(BaseModel):
     avatar_url: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class ProfileUpdate(BaseModel):
+    bio: str | None = None
+    profession: str | None = None
+    location: str | None = None
+    avatar_url: str | None = None

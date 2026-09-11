@@ -1,5 +1,5 @@
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.infrastructure.database.base import Base
@@ -22,6 +22,8 @@ class Profile(Base):
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="profile")
 
     def __repr__(self) -> str:
         return f"<Profile(id={self.id}, user_id={self.user_id})>"

@@ -97,3 +97,8 @@ testpaths = ["tests"]
 [tool.bandit]
 exclude_dirs = [".venv", "alembic/versions", "tests"]
 skips = []
+
+[dependency-groups]
+dev = [
+    "fakeredis[lua]>=2.37.1",
+]
