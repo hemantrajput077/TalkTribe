@@ -53,3 +53,12 @@ class ProfileService:
                 detail="PROFILE_NOT_FOUND",
             ) from None
         return await self.repo.update_profile(user_id, profile_data)
+
+    async def get_safe_profile(self, user_id: int) -> Profile:
+        profile = await self.repo.get_safe_profile(user_id)
+        if profile is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="PROFILE_NOT_FOUND",
+            ) from None
+        return profile

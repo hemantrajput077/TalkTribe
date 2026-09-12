@@ -22,3 +22,9 @@ class ProfileUpdate(BaseModel):
     profession: str | None = None
     location: str | None = None
     avatar_url: str | None = None
+
+
+class UserProfileResponse(ProfileUpdate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int

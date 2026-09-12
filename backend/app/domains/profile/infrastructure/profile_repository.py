@@ -38,3 +38,7 @@ class ProfileRepository:
         await self.db.commit()
         await self.db.refresh(profile)
         return profile
+
+    async def get_safe_profile(self, user_id: int) -> Profile | None:
+        result = await self.db.execute(select(Profile).where(Profile.id == user_id))
+        return result.scalar_one_or_none()

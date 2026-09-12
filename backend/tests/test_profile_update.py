@@ -33,7 +33,7 @@ REGISTER_URL = "/api/v1/auth/register"
 VERIFY_URL = "/api/v1/auth/verify-email"
 LOGIN_URL = "/api/v1/auth/login"
 PROFILE_ME_URL = "/api/v1/profiles/me"
-PROFILE_BY_ID_URL = "/api/v1/profiles/{}"
+PROFILE_BY_ID_URL = "/api/v1/profiles/admin/{}"
 
 _LEARNER = {
     "username": "updateuser",
