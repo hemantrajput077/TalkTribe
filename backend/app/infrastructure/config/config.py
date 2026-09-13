@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "TalkTribe"
 
+    # ── Interests ─────────────────────────────────────────────────────────────
+    MAX_INTERESTS: int = 10
+
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,
         case_sensitive=True,

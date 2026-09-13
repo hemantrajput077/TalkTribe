@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 import app.domains.auth.infrastructure.otp_model  # noqa: F401 — registers Otp on Base.metadata
 import app.domains.auth.infrastructure.token_model  # noqa: F401 — registers RefreshToken on Base.metadata
 import app.domains.auth.infrastructure.user_model  # noqa: F401 — registers User on Base.metadata
+import app.domains.profile.infrastructure.interest_model  # noqa: F401 — registers Interest on Base.metadata
 import app.domains.profile.infrastructure.profile_model  # noqa: F401 — registers Profile on Base.metadata
+import app.domains.profile.infrastructure.user_interest_model  # noqa: F401 — registers UserInterest on Base.metadata
 from alembic import context
 
 # Import your models and config
