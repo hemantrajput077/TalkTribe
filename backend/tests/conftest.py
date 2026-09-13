@@ -27,7 +27,9 @@ from sqlalchemy.pool import StaticPool
 import app.domains.auth.infrastructure.otp_model  # noqa: F401
 import app.domains.auth.infrastructure.token_model  # noqa: F401
 import app.domains.auth.infrastructure.user_model  # noqa: F401
+import app.domains.profile.infrastructure.interest_model  # noqa: F401
 import app.domains.profile.infrastructure.profile_model  # noqa: F401
+import app.domains.profile.infrastructure.user_interest_model  # noqa: F401
 from app.infrastructure.database.base import Base
 
 _TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -133,3 +135,36 @@ VALID_USER = {
     "password": "SecurePass1!",
     "full_name": "Test User",
 }
+
+# ── Interests seed fixture ─────────────────────────────────────────────────────
+
+_SEED_INTERESTS = [
+    {"id": 1, "name": "Art"},
+    {"id": 2, "name": "Books"},
+    {"id": 3, "name": "Business"},
+    {"id": 4, "name": "Cooking"},
+    {"id": 5, "name": "Fashion"},
+    {"id": 6, "name": "Fitness"},
+    {"id": 7, "name": "Gaming"},
+    {"id": 8, "name": "Movies"},
+    {"id": 9, "name": "Music"},
+    {"id": 10, "name": "Nature"},
+    {"id": 11, "name": "Science"},
+    {"id": 12, "name": "Sports"},
+    {"id": 13, "name": "Technology"},
+    {"id": 14, "name": "Travel"},
+]
+
+
+@pytest.fixture()
+async def seed_interests(db_session):
+    """
+    Insert the 14 predefined interests into the in-memory SQLite test DB.
+
+    Use this fixture in any test that calls GET /interests or PUT /profiles/me/interests
+    so that valid interest IDs are available without running Alembic migrations.
+    """
+    from app.domains.profile.infrastructure.interest_model import Interest
+
+    db_session.add_all([Interest(id=row["id"], name=row["name"]) for row in _SEED_INTERESTS])
+    await db_session.commit()
