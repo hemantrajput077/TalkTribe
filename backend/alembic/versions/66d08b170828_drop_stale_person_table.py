@@ -6,6 +6,8 @@ Create Date: 2026-09-12
 
 Removes the `person` table that was created outside the Alembic migration
 chain (likely from a manual experiment) and has no place in the TalkTribe schema.
+Uses IF EXISTS so the migration is safe on fresh CI databases where the table
+never existed.
 """
 
 import sqlalchemy as sa
@@ -18,11 +20,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_table("person")
+    # IF EXISTS makes this safe on fresh CI DBs where person never existed
+    op.execute("DROP TABLE IF EXISTS person")
 
 
 def downgrade() -> None:
-    # Restore the table exactly as it was found in the DB so this migration is reversible.
+    # Restore the table exactly as it was found in the local dev DB
     op.create_table(
         "person",
         sa.Column("id", sa.INTEGER(), autoincrement=False, nullable=False),
