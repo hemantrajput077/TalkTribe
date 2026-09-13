@@ -28,6 +28,16 @@ class InterestRepository:
         result = await self.db.execute(select(Interest).where(Interest.id.in_(ids)))
         return list(result.scalars().all())
 
+    async def get_user_interests(self, user_id: int) -> list[Interest]:
+        """Return the interests currently selected by the given user, sorted by name."""
+        result = await self.db.execute(
+            select(Interest)
+            .join(UserInterest, UserInterest.interest_id == Interest.id)
+            .where(UserInterest.user_id == user_id)
+            .order_by(Interest.name)
+        )
+        return list(result.scalars().all())
+
     async def replace_user_interests(self, user_id: int, interest_ids: list[int]) -> list[Interest]:
         """
         Replace all interest selections for a user atomically.

@@ -196,6 +196,65 @@ class TestSetMyInterests:
         assert len(resp.json()["interests"]) == 1
 
 
+# ── GET /profiles/me/interests ─────────────────────────────────────────────────
+
+
+class TestGetMyInterests:
+    @pytest.mark.asyncio
+    async def test_no_token_returns_401(self, client, seed_interests):
+        resp = await client.get(MY_INTERESTS_URL)
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_no_interests_set(
+        self, client, mock_send_email, seed_interests
+    ):
+        token = await _register_verify_login(client, mock_send_email, _USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.get(MY_INTERESTS_URL, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["interests"] == []
+
+    @pytest.mark.asyncio
+    async def test_returns_saved_interests(self, client, mock_send_email, seed_interests):
+        token = await _register_verify_login(client, mock_send_email, _USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # First set interests
+        await client.put(MY_INTERESTS_URL, json={"interest_ids": [9, 13]}, headers=headers)
+
+        # Then GET them back
+        resp = await client.get(MY_INTERESTS_URL, headers=headers)
+        assert resp.status_code == 200
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert names == {"Music", "Technology"}
+
+    @pytest.mark.asyncio
+    async def test_get_reflects_latest_put(self, client, mock_send_email, seed_interests):
+        """After replacing interests with PUT, GET should return the new list."""
+        token = await _register_verify_login(client, mock_send_email, _USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        await client.put(MY_INTERESTS_URL, json={"interest_ids": [1, 2, 3]}, headers=headers)
+        await client.put(MY_INTERESTS_URL, json={"interest_ids": [14]}, headers=headers)
+
+        resp = await client.get(MY_INTERESTS_URL, headers=headers)
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert names == {"Travel"}
+
+    @pytest.mark.asyncio
+    async def test_get_returns_empty_after_clear(self, client, mock_send_email, seed_interests):
+        token = await _register_verify_login(client, mock_send_email, _USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        await client.put(MY_INTERESTS_URL, json={"interest_ids": [1, 2]}, headers=headers)
+        await client.put(MY_INTERESTS_URL, json={"interest_ids": []}, headers=headers)
+
+        resp = await client.get(MY_INTERESTS_URL, headers=headers)
+        assert resp.json()["interests"] == []
+
+
 # ── Service unit tests ─────────────────────────────────────────────────────────
 
 

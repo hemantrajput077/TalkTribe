@@ -16,6 +16,10 @@ class InterestService:
         """Return the full predefined interest catalogue, sorted by name."""
         return await self.repo.get_all()
 
+    async def get_user_interests(self, user_id: int) -> list[Interest]:
+        """Return the interests currently selected by the given user."""
+        return await self.repo.get_user_interests(user_id)
+
     async def set_user_interests(self, user_id: int, interest_ids: list[int]) -> list[Interest]:
         """
         Validate then replace a user's interest selections.

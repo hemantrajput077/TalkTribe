@@ -41,6 +41,23 @@ async def list_interests(db: AsyncSession = Depends(get_db)) -> InterestListResp
 profiles_interests_router = APIRouter(prefix="/profiles", tags=["interests"])
 
 
+@profiles_interests_router.get(
+    "/me/interests",
+    response_model=UpdateInterestsResponse,
+    summary="Get the authenticated user's selected interests",
+)
+async def get_my_interests(
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
+    db: AsyncSession = Depends(get_db),
+) -> UpdateInterestsResponse:
+    """Return the list of interests currently selected by the authenticated user."""
+    svc = InterestService(db)
+    interests = await svc.get_user_interests(identity.user_id)
+    return UpdateInterestsResponse(
+        interests=[InterestResponse.model_validate(i) for i in interests]
+    )
+
+
 @profiles_interests_router.put(
     "/me/interests",
     response_model=UpdateInterestsResponse,

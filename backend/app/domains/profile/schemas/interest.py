@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-MAX_INTERESTS = 10
+from app.infrastructure.config.config import settings
+
+MAX_INTERESTS = settings.MAX_INTERESTS
 
 
 # ── Read models ───────────────────────────────────────────────────────────────
