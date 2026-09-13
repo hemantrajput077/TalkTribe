@@ -27,9 +27,11 @@ from sqlalchemy.pool import StaticPool
 import app.domains.auth.infrastructure.otp_model  # noqa: F401
 import app.domains.auth.infrastructure.token_model  # noqa: F401
 import app.domains.auth.infrastructure.user_model  # noqa: F401
+import app.domains.languages.infrastructure.language_model  # noqa: F401
 import app.domains.profile.infrastructure.interest_model  # noqa: F401
 import app.domains.profile.infrastructure.profile_model  # noqa: F401
 import app.domains.profile.infrastructure.user_interest_model  # noqa: F401
+import app.domains.profile.infrastructure.user_language_model  # noqa: F401
 from app.infrastructure.database.base import Base
 
 _TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -124,6 +126,22 @@ async def client(db_session, mock_send_email):
             yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+async def seed_languages(db_session):
+    """Insert English into the languages table for tests that need it.
+
+    Shares the same db_session as the client fixture so the seeded row is
+    visible to HTTP requests made through the test client.
+    """
+    from app.domains.languages.infrastructure.language_model import Language
+
+    english = Language(name="English", code="en")
+    db_session.add(english)
+    await db_session.commit()
+    await db_session.refresh(english)
+    return english
 
 
 # ── Reusable payload ──────────────────────────────────────────────────────────

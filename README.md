@@ -141,7 +141,9 @@ cd backend && \
 # PowerShell
 cd backend
 uv run ruff format --check .
+uv run ruff format . # if you wanted to format the unformated files
 uv run ruff check .
+uv run ruff check --fix
 $env:DATABASE_URL="sqlite+aiosqlite:///./test_ci.db"; uv run pytest -v
 uv run mypy app
 uv run bandit -r app -c pyproject.toml

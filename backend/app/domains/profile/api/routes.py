@@ -1,7 +1,9 @@
 """
 Profile routes.
 
-  GET /profiles/me  → return the authenticated user's own profile (lazy-create if missing)
+  GET  /profiles/me           → return the authenticated user's own profile (lazy-create if missing)
+  PATCH /profiles/me          → update the authenticated user's own profile
+  PUT  /profiles/me/languages → replace the authenticated user's full language configuration
 """
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
@@ -10,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_identity, require_admin
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.profile.application.profile_service import ProfileService
+from app.domains.profile.application.user_language_service import UserLanguageService
 from app.domains.profile.schemas.profile import ProfileResponse, ProfileUpdate, UserProfileResponse
+from app.domains.profile.schemas.user_language import (
+    PutLanguagesRequest,
+    PutLanguagesResponse,
+    UserLanguageOut,
+)
 from app.infrastructure.database.dependencies import get_db
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -59,6 +67,23 @@ async def get_profile_by_id(
     svc = ProfileService(db)
     profile = await svc.get_profile_by_id(profile_id)
     return ProfileResponse.model_validate(profile)
+
+
+@router.put(
+    "/me/languages",
+    response_model=PutLanguagesResponse,
+    summary="Replace the authenticated user's full language configuration",
+)
+async def put_my_languages(
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
+    data: PutLanguagesRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> PutLanguagesResponse:
+    svc = UserLanguageService(db)
+    user_languages = await svc.replace_user_languages(identity.user_id, data)
+    return PutLanguagesResponse(
+        languages=[UserLanguageOut.model_validate(ul) for ul in user_languages]
+    )
 
 
 @router.get(
