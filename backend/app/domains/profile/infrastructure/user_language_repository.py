@@ -4,6 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.domains.languages.domain.enums import LanguageRole
 from app.domains.profile.infrastructure.user_language_model import UserLanguage
 from app.domains.profile.schemas.user_language import UserLanguageInput
 
@@ -35,3 +36,22 @@ class UserLanguageRepository:
             .options(selectinload(UserLanguage.language))
         )
         return list(result.scalars().all())
+
+    async def get_by_user_id(self, user_id: int) -> list[UserLanguage]:
+        result = await self.db.execute(
+            select(UserLanguage)
+            .where(UserLanguage.user_id == user_id)
+            .options(selectinload(UserLanguage.language))
+        )
+        return list(result.scalars().all())
+
+    async def has_learning_language(self, user_id: int) -> bool:
+        result = await self.db.execute(
+            select(UserLanguage.id)
+            .where(
+                UserLanguage.user_id == user_id,
+                UserLanguage.role == LanguageRole.LEARNING,
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
