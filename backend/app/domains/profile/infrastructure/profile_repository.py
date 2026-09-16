@@ -30,15 +30,13 @@ class ProfileRepository:
         profile = await self.get_by_user_id(user_id)
         if profile is None:
             raise RuntimeError(f"update_profile called for non-existent user_id={user_id}")
-        profile.bio = profile_data.bio
-        profile.profession = profile_data.profession
-        profile.location = profile_data.location
-        profile.avatar_url = profile_data.avatar_url
+        for field, value in profile_data.model_dump(exclude_unset=True).items():
+            setattr(profile, field, value)
         self.db.add(profile)
         await self.db.commit()
         await self.db.refresh(profile)
         return profile
 
     async def get_safe_profile(self, user_id: int) -> Profile | None:
-        result = await self.db.execute(select(Profile).where(Profile.id == user_id))
+        result = await self.db.execute(select(Profile).where(Profile.user_id == user_id))
         return result.scalar_one_or_none()
