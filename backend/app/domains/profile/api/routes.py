@@ -86,9 +86,7 @@ async def put_my_languages(
     )
 
 
-@router.get(
-    "/{user_id}", response_model=PeerProfileResponse, summary="View another user's profile"
-)
+@router.get("/{user_id}", response_model=PeerProfileResponse, summary="View another user's profile")
 async def get_safe_profile(
     user_id: int = Path(..., title="The ID of the user whose profile to retrieve"),
     auth: AuthenticatedIdentity = Depends(get_current_identity),
