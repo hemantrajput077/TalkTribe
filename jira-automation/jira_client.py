@@ -154,6 +154,36 @@ class JiraClient:
         print(f"  [Story created] {result['key']} — {summary}")
         return result
 
+    def create_bug(
+        self,
+        summary: str,
+        description: str = "",
+        epic_key: str = None,
+        priority: str = "High",
+        labels: list = None,
+        bug_id: str = None,
+    ) -> dict:
+        """Create a JIRA Bug and optionally link it to an Epic."""
+        full_description = description
+        if bug_id:
+            full_description = f"Bug ID: {bug_id}\n\n{description}"
+
+        jira_priority = PRIORITY_MAP.get(priority.lower(), priority)
+        fields = {
+            "project": {"key": JIRA_PROJECT_KEY},
+            "issuetype": {"name": "Bug"},
+            "summary": summary,
+            "description": self._text_to_adf(full_description),
+            "priority": {"name": jira_priority},
+            "labels": labels or [],
+        }
+        if epic_key:
+            fields["parent"] = {"key": epic_key}
+
+        result = self._post("issue", {"fields": fields})
+        print(f"  [Bug created]   {result['key']} — {summary}")
+        return result
+
     def create_task(
         self,
         summary: str,
