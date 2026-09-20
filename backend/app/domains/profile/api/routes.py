@@ -13,7 +13,7 @@ from app.api.dependencies import get_current_identity, require_admin
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.profile.application.profile_service import ProfileService
 from app.domains.profile.application.user_language_service import UserLanguageService
-from app.domains.profile.schemas.profile import ProfileResponse, ProfileUpdate, UserProfileResponse
+from app.domains.profile.schemas.profile import PeerProfileResponse, ProfileResponse, ProfileUpdate
 from app.domains.profile.schemas.user_language import (
     PutLanguagesRequest,
     PutLanguagesResponse,
@@ -86,11 +86,9 @@ async def put_my_languages(
     )
 
 
-@router.get(
-    "/{user_id}", response_model=UserProfileResponse, summary="Check other user profile details"
-)
+@router.get("/{user_id}", response_model=PeerProfileResponse, summary="View another user's profile")
 async def get_safe_profile(
-    user_id: int = Path(..., title="The ID of the profile to retrieve"),
+    user_id: int = Path(..., title="The ID of the user whose profile to retrieve"),
     auth: AuthenticatedIdentity = Depends(get_current_identity),
     db: AsyncSession = Depends(get_db),
 ):
@@ -101,4 +99,4 @@ async def get_safe_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="PROFILE_NOT_FOUND",
         ) from None
-    return UserProfileResponse.model_validate(profile)
+    return PeerProfileResponse.model_validate(profile)
