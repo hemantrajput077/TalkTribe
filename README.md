@@ -21,7 +21,7 @@ cp .env.example .env
 cp backend/.env.example backend/.env   # edit values if needed
 
 # 3. Start all services
-docker-compose up --build
+docker compose up --build
 ```
 
 ### Access Points
@@ -79,13 +79,13 @@ TalkTribe/
 ### Docker
 
 ```bash
-docker-compose up           # Start all services
-docker-compose up -d        # Start in background
-docker-compose up --build   # Rebuild images and start
-docker-compose down         # Stop all services
-docker-compose down -v      # Stop and delete volumes (wipes DB)
-docker-compose logs -f      # Stream all logs
-docker-compose logs -f backend   # Stream backend logs only
+docker compose up           # Start all services
+docker compose up -d        # Start in background
+docker compose up --build   # Rebuild images and start
+docker compose down         # Stop all services
+docker compose down -v      # Stop and delete volumes (wipes DB)
+docker compose logs -f      # Stream all logs
+docker compose logs -f backend   # Stream backend logs only
 ```
 
 ### Backend — run from `backend/`
@@ -108,16 +108,13 @@ DATABASE_URL=sqlite+aiosqlite:///./test_ci.db uv run pytest -v
 # Security scan
 uv run bandit -r app -c pyproject.toml
 
-# Migrations (Docker must be running)
-docker-compose exec backend uv run alembic upgrade head
-docker-compose exec backend uv run alembic check
-```
-
-### Generate a new migration after changing a model
-
-```bash
-docker-compose exec backend uv run alembic revision --autogenerate -m "describe change"
-docker-compose exec backend uv run alembic upgrade head
+# Database migrations (Docker must be running)
+docker compose exec backend alembic check                                    # check for missing migrations
+docker compose exec backend alembic revision --autogenerate -m "description" # generate migration
+docker compose exec backend alembic upgrade head                             # apply all pending
+docker compose exec backend alembic current                                  # show current revision
+docker compose exec backend alembic history                                  # show full history
+docker compose exec backend alembic downgrade -1                             # roll back one step
 ```
 
 ---
@@ -187,12 +184,12 @@ netstat -ano | findstr :5433
 
 **Clean Docker restart**
 ```bash
-docker-compose down -v
-docker-compose up --build
+docker compose down -v
+docker compose up --build
 ```
 
 **Cannot connect to API**
-1. Check logs: `docker-compose logs backend`
+1. Check logs: `docker compose logs backend`
 2. Verify health: http://localhost:8000/health
 3. Check CORS origins in `backend/app/infrastructure/config/config.py`
 

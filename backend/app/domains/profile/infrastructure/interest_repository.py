@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.profile.infrastructure.interest_model import Interest
@@ -12,21 +12,44 @@ class InterestRepository:
         self.db = db
 
     async def get_all(self) -> list[Interest]:
-        """Return every predefined interest, sorted alphabetically."""
-        result = await self.db.execute(select(Interest).order_by(Interest.name))
+        """Return every active predefined interest, sorted alphabetically."""
+        result = await self.db.execute(
+            select(Interest)
+            .where(Interest.is_predefined == True, Interest.is_active == True)  # noqa: E712
+            .order_by(Interest.name)
+        )
         return list(result.scalars().all())
 
     async def get_by_ids(self, ids: list[int]) -> list[Interest]:
-        """
-        Return Interest rows whose IDs are in the given list.
-
-        Used by the service to validate that every submitted ID exists in the
-        catalogue before saving. If len(returned) < len(ids), some IDs are invalid.
-        """
+        """Return Interest rows whose IDs are in the given list."""
         if not ids:
             return []
         result = await self.db.execute(select(Interest).where(Interest.id.in_(ids)))
         return list(result.scalars().all())
+
+    async def find_by_normalised_name(self, normalised: str) -> Interest | None:
+        """Case-insensitive lookup by name. Returns None if not found."""
+        result = await self.db.execute(
+            select(Interest).where(func.lower(Interest.name) == normalised)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_custom_interest(self, display_name: str, user_id: int) -> Interest:
+        """
+        Persist a new user-created interest and flush to obtain its ID.
+
+        Does NOT commit — the caller (service) owns the transaction boundary.
+        """
+        interest = Interest(
+            name=display_name,
+            is_predefined=False,
+            created_by_user_id=user_id,
+            is_active=True,
+        )
+        self.db.add(interest)
+        await self.db.flush()
+        await self.db.refresh(interest)
+        return interest
 
     async def get_user_interests(self, user_id: int) -> list[Interest]:
         """Return the interests currently selected by the given user, sorted by name."""
@@ -46,18 +69,13 @@ class InterestRepository:
           1. DELETE all existing user_interests rows for user_id.
           2. INSERT new rows for each interest_id.
           3. Fetch and return the saved Interest objects.
-
-        An empty interest_ids list clears all selections.
         """
-        # Step 1 — delete current selections
         await self.db.execute(delete(UserInterest).where(UserInterest.user_id == user_id))
 
-        # Step 2 — insert new selections
         if interest_ids:
             new_rows = [UserInterest(user_id=user_id, interest_id=iid) for iid in interest_ids]
             self.db.add_all(new_rows)
 
         await self.db.commit()
 
-        # Step 3 — return the saved Interest objects (for response serialisation)
         return await self.get_by_ids(interest_ids)

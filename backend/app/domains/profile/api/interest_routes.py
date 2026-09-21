@@ -71,10 +71,15 @@ async def set_my_interests(
     """
     Replace all interest selections for the current user (delete-then-insert).
 
-    - Maximum 10 interests allowed.
-    - All submitted IDs must exist in the predefined catalogue.
-    - Submitting an empty list clears all selections.
+    - Maximum 10 interests total (interest_ids + custom_interests combined).
+    - All interest_ids must exist in the predefined catalogue.
+    - Custom names matching a predefined interest are rejected (use interest_ids).
+    - Submitting both fields empty clears all interests.
     """
     svc = InterestService(db)
-    saved = await svc.set_user_interests(identity.user_id, body.interest_ids)
+    saved = await svc.set_user_interests(
+        user_id=identity.user_id,
+        interest_ids=body.interest_ids,
+        custom_interests=body.custom_interests,
+    )
     return UpdateInterestsResponse(interests=[InterestResponse.model_validate(i) for i in saved])

@@ -1,5 +1,5 @@
 """
-test_interests.py — GET /api/v1/interests  &  PUT /api/v1/profiles/me/interests  (TT-14)
+test_interests.py — GET /api/v1/interests  &  PUT /api/v1/profiles/me/interests  (TT-14 / TT-18)
 
 Acceptance criteria tested:
   GET /interests
@@ -19,6 +19,17 @@ Acceptance criteria tested:
 Service-layer unit tests (mocked repository):
     11. set_user_interests raises 422 for an unknown ID.
     12. set_user_interests calls repo.replace_user_interests on success.
+
+Custom interests (TT-18):
+    13. Valid custom_interests name is accepted and saved.
+    14. Custom interest appears in subsequent GET /profiles/me/interests.
+    15. GET /interests does NOT include custom interests.
+    16. Empty string after trim → 422.
+    17. Name over 50 chars → 422.
+    18. Within-request duplicate (case-insensitive) is silently deduplicated.
+    19. Name that matches a predefined interest (case-insensitive) → 422.
+    20. Combined interest_ids + custom_interests > 10 → 422.
+    21. Custom interest is reused on second PUT (no duplicate DB row).
 """
 
 from unittest.mock import AsyncMock
@@ -268,7 +279,7 @@ class TestInterestServiceUnit:
         svc.repo.get_by_ids.return_value = [Interest(id=1, name="Art")]
 
         with pytest.raises(HTTPException) as exc_info:
-            await svc.set_user_interests(user_id=1, interest_ids=[1, 9999])
+            await svc.set_user_interests(user_id=1, interest_ids=[1, 9999], custom_interests=[])
 
         assert exc_info.value.status_code == 422
         assert "INVALID_INTEREST_ID" in exc_info.value.detail
@@ -282,21 +293,192 @@ class TestInterestServiceUnit:
         svc.repo.get_by_ids.return_value = saved
         svc.repo.replace_user_interests.return_value = saved
 
-        result = await svc.set_user_interests(user_id=42, interest_ids=[1, 2])
+        result = await svc.set_user_interests(user_id=42, interest_ids=[1, 2], custom_interests=[])
 
         svc.repo.replace_user_interests.assert_awaited_once_with(42, [1, 2])
         assert result is saved
 
     @pytest.mark.asyncio
     async def test_set_user_interests_empty_skips_validation(self):
-        """Empty list bypasses get_by_ids and goes straight to replace."""
+        """Empty lists bypass get_by_ids and go straight to replace."""
         mock_db = AsyncMock()
         svc = InterestService(mock_db)
         svc.repo = AsyncMock()
         svc.repo.replace_user_interests.return_value = []
 
-        result = await svc.set_user_interests(user_id=1, interest_ids=[])
+        result = await svc.set_user_interests(user_id=1, interest_ids=[], custom_interests=[])
 
         svc.repo.get_by_ids.assert_not_awaited()
         svc.repo.replace_user_interests.assert_awaited_once_with(1, [])
         assert result == []
+
+
+# ── Custom interests (TT-18) ──────────────────────────────────────────────────
+
+_CUSTOM_USER = {
+    "username": "customuser",
+    "email": "custom@example.com",
+    "phone_number": "+919876543299",
+    "password": "SecurePass1!",
+    "full_name": "Custom User",
+}
+
+
+class TestCustomInterests:
+    @pytest.mark.asyncio
+    async def test_valid_custom_interest_is_saved(self, client, mock_send_email, seed_interests):
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert "Photography" in names
+
+    @pytest.mark.asyncio
+    async def test_custom_interest_appears_in_get(self, client, mock_send_email, seed_interests):
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        resp = await client.get(MY_INTERESTS_URL, headers=headers)
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert "Photography" in names
+
+    @pytest.mark.asyncio
+    async def test_custom_interest_not_in_catalogue(self, client, mock_send_email, seed_interests):
+        """GET /interests must only return predefined interests."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        resp = await client.get(INTERESTS_URL)
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert "Photography" not in names
+        assert len(names) == 14  # catalogue unchanged
+
+    @pytest.mark.asyncio
+    async def test_empty_string_custom_interest_returns_422(
+        self, client, mock_send_email, seed_interests
+    ):
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["   "]},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_custom_interest_over_50_chars_returns_422(
+        self, client, mock_send_email, seed_interests
+    ):
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["A" * 51]},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_within_request_duplicate_is_deduplicated(
+        self, client, mock_send_email, seed_interests
+    ):
+        """Submitting ['photography', 'Photography'] counts as one."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["photography", "Photography"]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["interests"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_custom_name_matching_predefined_returns_422(
+        self, client, mock_send_email, seed_interests
+    ):
+        """'music' normalises to the same as predefined 'Music' → reject."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["music"]},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+        assert "CUSTOM_INTEREST_CONFLICTS_WITH_CATALOGUE" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_combined_limit_enforced(self, client, mock_send_email, seed_interests):
+        """6 predefined IDs + 5 custom names = 11 total → 422."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={
+                "interest_ids": [1, 2, 3, 4, 5, 6],
+                "custom_interests": ["Astronomy", "Yoga", "Pottery", "Chess", "Dance"],
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_mix_predefined_and_custom(self, client, mock_send_email, seed_interests):
+        """Predefined IDs and custom names can be combined in one request."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [9, 13], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        names = {i["name"] for i in resp.json()["interests"]}
+        assert names == {"Music", "Technology", "Photography"}
+
+    @pytest.mark.asyncio
+    async def test_custom_interest_reused_on_second_put(
+        self, client, mock_send_email, seed_interests
+    ):
+        """Submitting the same custom name twice creates only one DB row."""
+        token = await _register_verify_login(client, mock_send_email, _CUSTOM_USER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        resp = await client.put(
+            MY_INTERESTS_URL,
+            json={"interest_ids": [], "custom_interests": ["Photography"]},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        # Still exactly one Photography entry — not duplicated.
+        photo_items = [i for i in resp.json()["interests"] if i["name"] == "Photography"]
+        assert len(photo_items) == 1
