@@ -56,5 +56,9 @@ class UserLanguageOut(BaseModel):
     proficiency: CEFRLevel | None
 
 
-class PutLanguagesResponse(BaseModel):
+class UserLanguagesResponse(BaseModel):
     languages: list[UserLanguageOut]
+
+
+PutLanguagesResponse = UserLanguagesResponse
+
