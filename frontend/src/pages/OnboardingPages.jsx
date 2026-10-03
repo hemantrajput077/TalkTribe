@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, Check } from "lucide-react";
 import AuthLayout from "@/layouts/AuthLayout";
@@ -7,7 +7,8 @@ import Button from "@/components/tt/Button";
 import Avatar from "@/components/tt/Avatar";
 import InterestChip from "@/components/tt/InterestChip";
 import { useUser } from "@/context/UserContext";
-import { INTERESTS, LANGUAGES, PROFICIENCY_LEVELS, PROFESSIONS } from "@/data/mockData";
+import { LANGUAGES, PROFICIENCY_LEVELS, PROFESSIONS } from "@/data/mockData";
+import { getInterests, getMyInterests, setMyInterests } from "@/services/api";
 
 const STEPS = ["Basic Information", "Languages", "Interests"];
 
@@ -78,18 +79,30 @@ const MAX = 10;
 export function InterestsPage() {
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
-  const [selected, setSelected] = useState(user.interests);
+  const { data: interestsList, loading: interestsLoading } = useAsync(getInterests);
+  const { data: userInterests, loading: userInterestsLoading } = useAsync(getMyInterests);
+  const [selected, setSelected] = useState([]);
+
+  // Initialize selected when userInterests loads
+  useEffect(() => {
+    if (userInterests) {
+      setSelected(userInterests);
+    }
+  }, [userInterests]);
+
   const toggle = (i) =>
     setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : s.length >= MAX ? s : [...s, i]));
-  const done = () => {
+  const done = async () => {
+    await setMyInterests({ interest_ids: selected.map((i) => i), custom_interests: [] });
     updateUser({ interests: selected });
     navigate({ to: "/dashboard" });
   };
+
   return (
     <AuthLayout wide title="What do you love talking about?" subtitle="Pick up to 10 interests. We'll match you with people who share them.">
       <Stepper step={2} />
       <div className="flex flex-wrap gap-2.5">
-        {INTERESTS.map((i) => (
+        {interestsLoading ? <p>Loading interests…</p> : (interestsList || []).map((i) => (
           <InterestChip key={i} label={i} selected={selected.includes(i)} onClick={() => toggle(i)} />
         ))}
       </div>

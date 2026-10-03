@@ -33,13 +33,22 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/profile" aria-label="Your profile">
-            <Avatar name={user.name} size="sm" />
-          </Link>
-          <button onClick={handleLogout} className={`${linkCls} px-2.5`} aria-label="Logout">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden lg:inline">Logout</span>
-          </button>
+          {user ? (
+            <>
+              <Link to="/profile" aria-label="Your profile">
+                <Avatar name={user.full_name || user.name || user.username || "User"} size="sm" />
+              </Link>
+              <button onClick={handleLogout} className={`${linkCls} px-2.5`} aria-label="Logout">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden lg:inline">Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className={linkCls}>Log in</Link>
+              <Link to="/register" className={`${linkCls} bg-primary text-white hover:bg-primary/90 hover:text-white`}>Sign up</Link>
+            </>
+          )}
         </div>
       </div>
     </header>

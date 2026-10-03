@@ -9,14 +9,16 @@ import { CardSkeleton, EmptyState } from "@/components/tt/States";
 import { useUser } from "@/context/UserContext";
 import { useAsync } from "@/hooks/useAsync";
 import { getPartners } from "@/services/api";
-import { INTERESTS, PROFICIENCY_LEVELS, PROFESSIONS } from "@/data/mockData";
+import { PROFICIENCY_LEVELS, PROFESSIONS } from "@/data/mockData";
+import { getInterests } from "@/services/api";
 
 export default function PartnersPage() {
   const { user } = useUser();
   const { data: partners, loading } = useAsync(getPartners);
+  const { data: allInterests, loading: interestsLoading } = useAsync(getInterests);
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [interests, setInterests] = useState([]);
+  const [selectedInterests, setSelectedInterests] = useState([]);
   const [level, setLevel] = useState("Any level");
   const [profession, setProfession] = useState("Any profession");
 
@@ -26,15 +28,15 @@ export default function PartnersPage() {
     return partners.filter(
       (p) =>
         (p.name + p.profession + p.nativeLanguage).toLowerCase().includes(query.toLowerCase()) &&
-        (interests.length === 0 || interests.some((i) => p.interests.includes(i))) &&
+        (selectedInterests.length === 0 || selectedInterests.some((i) => p.interests.includes(i))) &&
         (level === "Any level" || p.englishLevel === level) &&
         (profession === "Any profession" || p.profession === profession),
     );
-  }, [partners, query, interests, level, profession]);
+  }, [partners, query, selectedInterests, level, profession]);
 
-  const activeCount = interests.length + (level !== "Any level") + (profession !== "Any profession");
-  const clear = () => { setInterests([]); setLevel("Any level"); setProfession("Any profession"); setQuery(""); };
-  const toggle = (i) => setInterests((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
+  const activeCount = selectedInterests.length + (level !== "Any level") + (profession !== "Any profession");
+  const clear = () => { setSelectedInterests([]); setLevel("Any level"); setProfession("Any profession"); setQuery(""); };
+  const toggle = (i) => setSelectedInterests((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
 
   return (
     <AppLayout>
@@ -64,7 +66,7 @@ export default function PartnersPage() {
           <div>
             <p className="mb-2 text-sm font-medium">Interests</p>
             <div className="flex flex-wrap gap-2">
-              {INTERESTS.map((i) => <InterestChip key={i} label={i} size="sm" selected={interests.includes(i)} onClick={() => toggle(i)} />)}
+              {interestsLoading ? <p>Loading interests…</p> : (allInterests || []).map((i) => <InterestChip key={i} label={i} size="sm" selected={selectedInterests.includes(i)} onClick={() => toggle(i)} />)}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
