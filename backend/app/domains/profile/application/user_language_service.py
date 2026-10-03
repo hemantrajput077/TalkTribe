@@ -29,3 +29,7 @@ class UserLanguageService:
             )
 
         return await self.repo.replace_all(user_id, data.languages)
+
+    async def get_user_languages(self, user_id: int) -> list[UserLanguage]:
+        return await self.repo.get_by_user_id(user_id)
+

@@ -346,7 +346,67 @@ class TestPutMyLanguages:
         assert data["languages"][0]["role"] == "NATIVE"
 
 
+# ── GET /api/v1/profiles/me/languages ────────────────────────────────────────
+
+
+class TestGetMyLanguages:
+    @pytest.mark.asyncio
+    async def test_no_token_returns_401(self, client):
+        resp = await client.get(MY_LANGUAGES_URL)
+        assert resp.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_empty_languages_returns_empty_list(
+        self, client, mock_send_email, seed_languages
+    ):
+        token = await _register_verify_login(client, mock_send_email, _LEARNER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        resp = await client.get(MY_LANGUAGES_URL, headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "languages" in data
+        assert data["languages"] == []
+
+    @pytest.mark.asyncio
+    async def test_get_my_languages_returns_saved_languages(
+        self, client, mock_send_email, seed_languages, db_session
+    ):
+        spanish = Language(name="Spanish", code="es")
+        db_session.add(spanish)
+        await db_session.commit()
+        await db_session.refresh(spanish)
+
+        token = await _register_verify_login(client, mock_send_email, _LEARNER)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Save languages
+        await client.put(
+            MY_LANGUAGES_URL,
+            json={
+                "languages": [
+                    {"language_id": seed_languages.id, "role": "NATIVE"},
+                    {"language_id": spanish.id, "role": "LEARNING", "proficiency": "B2"},
+                ]
+            },
+            headers=headers,
+        )
+
+        # Retrieve languages via GET
+        resp = await client.get(MY_LANGUAGES_URL, headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["languages"]) == 2
+        roles = {l["role"]: l for l in data["languages"]}
+        assert "NATIVE" in roles
+        assert roles["NATIVE"]["language_id"] == seed_languages.id
+        assert "LEARNING" in roles
+        assert roles["LEARNING"]["language_id"] == spanish.id
+        assert roles["LEARNING"]["proficiency"] == "B2"
+
+
 # ── Service unit tests ────────────────────────────────────────────────────────
+
 
 
 class TestUserLanguageServiceUnit:
