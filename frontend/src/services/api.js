@@ -294,31 +294,6 @@ export const getCurrentUser = async () => {
   }
 };
 
-// ─── Matching / Partners APIs ───────────────────────────────────────────────
-
-export const getMatches = async (limit = 20) => {
-  try {
-    const response = await fetch(`${API_BASE}/api/v1/matches?limit=${limit}`, {
-      headers: authHeaders(),
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return (data.items || []).map((m) => ({
-      id: String(m.user_id),
-      name: m.display_name || "Partner",
-      profession: m.profession || "Language Learner",
-      englishLevel: m.proficiency_level || "B2",
-      nativeLanguage: "English",
-      interests: m.shared_interests || [],
-      bio: `Compatibility score: ${m.compatibility_score}%`,
-      online: true,
-      compatibility_score: m.compatibility_score,
-    }));
-  } catch {
-    return null;
-  }
-};
-
 // ─── Matching & Partner Profiles from Database ─────────────────────────────
 
 export const fetchCommunityProfiles = async () => {
