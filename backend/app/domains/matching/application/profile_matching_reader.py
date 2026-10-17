@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.domains.auth.domain.enums import AccountStatus
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.languages.domain.enums import LanguageRole
@@ -33,9 +36,7 @@ class ProfileMatchingReader:
         return set(result.scalars().all())
 
     async def get_requester_profession(self, user_id: int) -> str | None:
-        result = await self.db.execute(
-            select(Profile.profession).where(Profile.user_id == user_id)
-        )
+        result = await self.db.execute(select(Profile.profession).where(Profile.user_id == user_id))
         return result.scalar_one_or_none()
 
     async def get_eligible_candidate_ids(self, exclude_user_id: int) -> list[int]:
@@ -78,8 +79,7 @@ class ProfileMatchingReader:
                 summaries[uid].interest_names[interest_id] = interest_name
 
         lang_result = await self.db.execute(
-            select(UserLanguage.user_id, UserLanguage.proficiency)
-            .where(
+            select(UserLanguage.user_id, UserLanguage.proficiency).where(
                 UserLanguage.user_id.in_(user_ids),
                 UserLanguage.role == LanguageRole.LEARNING,
                 UserLanguage.proficiency.isnot(None),
