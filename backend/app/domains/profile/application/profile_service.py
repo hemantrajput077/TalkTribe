@@ -81,8 +81,11 @@ class ProfileService:
             select(UserLanguage).where(UserLanguage.user_id == user_id)
         )
         user_langs = list(lang_res.scalars().all())
-        native = next((l.language_name for l in user_langs if l.role == LanguageRole.NATIVE), "English")
-        learning = next((l for l in user_langs if l.role == LanguageRole.LEARNING), None)
+        native = next(
+            (lang.language_name for lang in user_langs if lang.role == LanguageRole.NATIVE),
+            "English",
+        )
+        learning = next((lang for lang in user_langs if lang.role == LanguageRole.LEARNING), None)
 
         # Fetch interests
         int_res = await self.db.execute(
@@ -126,8 +129,13 @@ class ProfileService:
                 select(UserLanguage).where(UserLanguage.user_id == user.id)
             )
             user_langs = list(lang_res.scalars().all())
-            native = next((l.language_name for l in user_langs if l.role == LanguageRole.NATIVE), "English")
-            learning = next((l for l in user_langs if l.role == LanguageRole.LEARNING), None)
+            native = next(
+                (lang.language_name for lang in user_langs if lang.role == LanguageRole.NATIVE),
+                "English",
+            )
+            learning = next(
+                (lang for lang in user_langs if lang.role == LanguageRole.LEARNING), None
+            )
 
             int_res = await self.db.execute(
                 select(Interest.name)

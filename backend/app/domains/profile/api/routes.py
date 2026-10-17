@@ -120,6 +120,7 @@ async def list_profiles(
 @router.get("/{user_id}", response_model=PeerProfileResponse, summary="View another user's profile")
 async def get_safe_profile(
     user_id: int = Path(..., title="The ID of the user whose profile to retrieve"),
+    auth: AuthenticatedIdentity = Depends(get_current_identity),
     db: AsyncSession = Depends(get_db),
 ):
     svc = ProfileService(db)

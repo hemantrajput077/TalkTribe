@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 BLOCK-01 — InteractionEligibility contract.
 
@@ -17,6 +15,8 @@ all pairs — correct because no block relationships exist yet.
 Matching must NEVER import FriendshipRepository or any block-infrastructure class
 directly.  It must always go through this contract (ADR-009, matching.md §8).
 """
+
+from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 

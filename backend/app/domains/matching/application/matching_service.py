@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.domains.languages.domain.enums import LanguageRole
 from app.domains.matching.application.profile_matching_reader import ProfileMatchingReader
 from app.domains.matching.application.scoring_engine import score_candidate

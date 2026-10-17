@@ -32,4 +32,3 @@ class UserLanguageService:
 
     async def get_user_languages(self, user_id: int) -> list[UserLanguage]:
         return await self.repo.get_by_user_id(user_id)
-

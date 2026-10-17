@@ -61,4 +61,3 @@ class UserLanguagesResponse(BaseModel):
 
 
 PutLanguagesResponse = UserLanguagesResponse
-

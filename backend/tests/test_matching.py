@@ -40,14 +40,11 @@ Acceptance criteria tested:
     30. Deterministic: identical state produces identical result.
 """
 
-from unittest.mock import AsyncMock
-
 import pytest
 
 from app.domains.auth.domain.enums import AccountStatus, UserRole
 from app.domains.auth.infrastructure.user_model import User
 from app.domains.languages.domain.enums import LanguageRole
-from app.domains.languages.infrastructure.language_model import Language
 from app.domains.matching.application.profile_matching_reader import CandidateSummary
 from app.domains.matching.application.scoring_engine import (
     _interest_score,
@@ -270,9 +267,7 @@ class TestMatchesAPI:
         """Test 16: eligible account but profile has no bio → 403."""
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
         # No profile created at all (or no bio) → ProfileEligibilityService rejects
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
         assert resp.json()["detail"] == "PROFILE_BIO_MISSING"
 
@@ -284,6 +279,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -295,9 +291,7 @@ class TestMatchesAPI:
         db_session.add(profile)
         await db_session.commit()
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
         assert resp.json()["detail"] == "PROFILE_LEARNING_LANGUAGE_MISSING"
 
@@ -309,6 +303,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -317,22 +312,19 @@ class TestMatchesAPI:
         requester_id = result.scalar_one()
         await _make_eligible(db_session, requester_id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["items"] == []
         assert body["count"] == 0
 
     @pytest.mark.asyncio
-    async def test_self_excluded(
-        self, client, mock_send_email, db_session, seed_languages
-    ):
+    async def test_self_excluded(self, client, mock_send_email, db_session, seed_languages):
         """Test 19: the requester's own user_id must not appear in results."""
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -341,9 +333,7 @@ class TestMatchesAPI:
         requester_id = result.scalar_one()
         await _make_eligible(db_session, requester_id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         returned_ids = [item["user_id"] for item in resp.json()["items"]]
         assert requester_id not in returned_ids
@@ -356,6 +346,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -368,9 +359,7 @@ class TestMatchesAPI:
         candidate = await _create_user_direct(db_session, "inactive_candidate", is_active=False)
         await _make_eligible(db_session, candidate.id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         returned_ids = [item["user_id"] for item in resp.json()["items"]]
         assert candidate.id not in returned_ids
 
@@ -382,6 +371,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -395,9 +385,7 @@ class TestMatchesAPI:
         )
         await _make_eligible(db_session, candidate.id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         returned_ids = [item["user_id"] for item in resp.json()["items"]]
         assert candidate.id not in returned_ids
 
@@ -409,6 +397,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -429,9 +418,7 @@ class TestMatchesAPI:
         )
         await db_session.commit()
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         returned_ids = [item["user_id"] for item in resp.json()["items"]]
         assert incomplete.id not in returned_ids
 
@@ -443,6 +430,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
         from app.domains.profile.infrastructure.user_interest_model import UserInterest
 
@@ -470,9 +458,7 @@ class TestMatchesAPI:
         db_session.add(UserInterest(user_id=cand_b.id, interest_id=1))
         await db_session.commit()
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         ids = [item["user_id"] for item in resp.json()["items"]]
         assert ids.index(cand_a.id) < ids.index(cand_b.id), (
@@ -487,6 +473,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -502,9 +489,7 @@ class TestMatchesAPI:
         cand_y = await _create_user_direct(db_session, "tie_cand_y")
         await _make_eligible(db_session, cand_y.id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         ids = [item["user_id"] for item in resp.json()["items"]]
         # Both must appear; lower user_id must come first
         assert cand_x.id in ids
@@ -522,6 +507,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -570,24 +556,20 @@ class TestMatchesAPI:
         )
         await db_session.commit()
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
-        ids = [item["user_id"] for item in resp.json()["items"]]
         scores = {item["user_id"]: item["compatibility_score"] for item in resp.json()["items"]}
         assert scores[cand_same_prof.id] > scores[cand_diff_prof.id], (
             "Same profession must score higher than different profession"
         )
 
     @pytest.mark.asyncio
-    async def test_results_capped_at_20(
-        self, client, mock_send_email, db_session, seed_languages
-    ):
+    async def test_results_capped_at_20(self, client, mock_send_email, db_session, seed_languages):
         """Test 26: at most 20 results returned even with 25 eligible candidates."""
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -601,9 +583,7 @@ class TestMatchesAPI:
             cand = await _create_user_direct(db_session, f"cap_cand_{i:02d}")
             await _make_eligible(db_session, cand.id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         body = resp.json()
         assert len(body["items"]) <= 20
@@ -617,6 +597,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -640,6 +621,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
         from app.domains.profile.infrastructure.user_interest_model import UserInterest
 
@@ -656,9 +638,7 @@ class TestMatchesAPI:
         db_session.add(UserInterest(user_id=cand.id, interest_id=1))
         await db_session.commit()
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         body = resp.json()
         assert "items" in body
@@ -682,6 +662,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(
@@ -693,9 +674,7 @@ class TestMatchesAPI:
         cand = await _create_user_direct(db_session, "safe_field_cand")
         await _make_eligible(db_session, cand.id, seed_languages.id)
 
-        resp = await client.get(
-            MATCHES_URL, headers={"Authorization": f"Bearer {token}"}
-        )
+        resp = await client.get(MATCHES_URL, headers={"Authorization": f"Bearer {token}"})
         raw_text = resp.text.lower()
         # Ensure none of the sensitive fields leak
         assert "password" not in raw_text
@@ -717,6 +696,7 @@ class TestMatchesAPI:
         token = await _register_verify_login(client, mock_send_email, _REQUESTER)
 
         from sqlalchemy import select
+
         from app.domains.auth.infrastructure.user_model import User
 
         result = await db_session.execute(

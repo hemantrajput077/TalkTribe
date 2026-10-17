@@ -56,6 +56,7 @@ if settings.TRUSTED_PROXY_IPS:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,  # Which origins can access the API
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,  # Allow cookies to be sent
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allow all headers

@@ -397,7 +397,7 @@ class TestGetMyLanguages:
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["languages"]) == 2
-        roles = {l["role"]: l for l in data["languages"]}
+        roles = {item["role"]: item for item in data["languages"]}
         assert "NATIVE" in roles
         assert roles["NATIVE"]["language_id"] == seed_languages.id
         assert "LEARNING" in roles
@@ -406,7 +406,6 @@ class TestGetMyLanguages:
 
 
 # ── Service unit tests ────────────────────────────────────────────────────────
-
 
 
 class TestUserLanguageServiceUnit:

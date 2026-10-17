@@ -7,18 +7,20 @@ Fills real, realistic language exchange data:
 """
 
 import asyncio
-from sqlalchemy import select, text
-from app.infrastructure.database.session import AsyncSessionLocal
-from app.domains.auth.infrastructure.user_model import User
-from app.domains.auth.infrastructure.token_model import RefreshToken  # noqa: F401
-from app.domains.auth.infrastructure.otp_model import Otp  # noqa: F401
+
+from sqlalchemy import select
+
 from app.domains.auth.domain.enums import AccountStatus, UserRole
-from app.infrastructure.security.password import hash_password
-from app.domains.profile.infrastructure.profile_model import Profile
+from app.domains.auth.infrastructure.otp_model import Otp  # noqa: F401
+from app.domains.auth.infrastructure.token_model import RefreshToken  # noqa: F401
+from app.domains.auth.infrastructure.user_model import User
 from app.domains.languages.infrastructure.language_model import Language
-from app.domains.profile.infrastructure.user_language_model import UserLanguage
 from app.domains.profile.infrastructure.interest_model import Interest
+from app.domains.profile.infrastructure.profile_model import Profile
 from app.domains.profile.infrastructure.user_interest_model import UserInterest
+from app.domains.profile.infrastructure.user_language_model import UserLanguage
+from app.infrastructure.database.session import AsyncSessionLocal
+from app.infrastructure.security.password import hash_password
 
 LANGUAGES_DATA = [
     {"name": "English", "code": "en"},
@@ -36,10 +38,26 @@ LANGUAGES_DATA = [
 ]
 
 INTERESTS_DATA = [
-    "Art", "Books", "Business", "Cooking", "Fashion", "Fitness",
-    "Gaming", "Movies", "Music", "Nature", "Science", "Sports",
-    "Technology", "Travel", "Photography", "Coding", "Startups",
-    "History", "Design", "Philosophy"
+    "Art",
+    "Books",
+    "Business",
+    "Cooking",
+    "Fashion",
+    "Fitness",
+    "Gaming",
+    "Movies",
+    "Music",
+    "Nature",
+    "Science",
+    "Sports",
+    "Technology",
+    "Travel",
+    "Photography",
+    "Coding",
+    "Startups",
+    "History",
+    "Design",
+    "Philosophy",
 ]
 
 USERS_DATA = [
@@ -165,20 +183,21 @@ USERS_DATA = [
     },
 ]
 
+
 async def seed_all():
     print("[*] Starting database seed...")
     async with AsyncSessionLocal() as session:
         # 1. Seed Languages
         print("[*] Seeding languages...")
         lang_map = {}
-        for l in LANGUAGES_DATA:
-            res = await session.execute(select(Language).where(Language.name == l["name"]))
+        for lang_item in LANGUAGES_DATA:
+            res = await session.execute(select(Language).where(Language.name == lang_item["name"]))
             existing = res.scalar_one_or_none()
             if not existing:
-                existing = Language(name=l["name"], code=l["code"])
+                existing = Language(name=lang_item["name"], code=lang_item["code"])
                 session.add(existing)
                 await session.flush()
-            lang_map[l["name"]] = existing.id
+            lang_map[lang_item["name"]] = existing.id
         await session.commit()
         print(f"[+] Languages ready: {len(lang_map)} languages.")
 
@@ -226,7 +245,9 @@ async def seed_all():
                 await session.flush()
 
             # Profile
-            res_p = await session.execute(select(Profile).where(Profile.user_id == existing_user.id))
+            res_p = await session.execute(
+                select(Profile).where(Profile.user_id == existing_user.id)
+            )
             prof = res_p.scalar_one_or_none()
             if not prof:
                 prof = Profile(
@@ -253,7 +274,9 @@ async def seed_all():
                 )
                 nl = res_nl.scalar_one_or_none()
                 if not nl:
-                    session.add(UserLanguage(user_id=existing_user.id, language_id=native_id, role="NATIVE"))
+                    session.add(
+                        UserLanguage(user_id=existing_user.id, language_id=native_id, role="NATIVE")
+                    )
                 else:
                     nl.language_id = native_id
 
@@ -266,12 +289,14 @@ async def seed_all():
                 )
                 ll = res_ll.scalar_one_or_none()
                 if not ll:
-                    session.add(UserLanguage(
-                        user_id=existing_user.id,
-                        language_id=english_id,
-                        role="LEARNING",
-                        proficiency=u["learning_level"],
-                    ))
+                    session.add(
+                        UserLanguage(
+                            user_id=existing_user.id,
+                            language_id=english_id,
+                            role="LEARNING",
+                            proficiency=u["learning_level"],
+                        )
+                    )
                 else:
                     ll.language_id = english_id
                     ll.proficiency = u["learning_level"]
@@ -294,6 +319,7 @@ async def seed_all():
         await session.commit()
         print(f"[+] Successfully seeded/updated {len(USERS_DATA)} active user profiles!")
         print("[+] Test password for all seeded users: TalkTribe123!")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_all())

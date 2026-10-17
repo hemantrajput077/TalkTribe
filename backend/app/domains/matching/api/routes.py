@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.dependencies import get_current_identity
 from app.domains.auth.schemas.identity import AuthenticatedIdentity
 from app.domains.matching.application.matching_service import MAX_CANDIDATES, MatchingService

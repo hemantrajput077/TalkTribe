@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Pydantic response schemas for the Matching API (M3).
 
@@ -23,6 +21,8 @@ Response shape matches matching.md §20 exactly:
 Safe-field policy (matching.md §35):
   - No email, phone, password, OTP, refresh tokens, admin notes, or block internals.
 """
+
+from __future__ import annotations
 
 from pydantic import BaseModel
 

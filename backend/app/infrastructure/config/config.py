@@ -16,7 +16,15 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
 
     # ── CORS ──────────────────────────────────────────────────────────────────
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8080", "http://127.0.0.1:8080"]
+    BACKEND_CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    CORS_ORIGIN_REGEX: str | None = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?$"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod

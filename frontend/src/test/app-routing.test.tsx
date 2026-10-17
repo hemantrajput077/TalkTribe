@@ -42,4 +42,18 @@ describe("App routing", () => {
       expect(document.body.innerHTML).toContain("404");
     });
   });
+
+  it("renders the profile route without crashing", async () => {
+    await renderAt("/profile");
+    await waitFor(() => {
+      expect(document.body.innerHTML).not.toContain("This page didn't load");
+    });
+  });
+
+  it("renders the partner profile route without crashing", async () => {
+    await renderAt("/partners/1");
+    await waitFor(() => {
+      expect(document.body.innerHTML).not.toContain("This page didn't load");
+    });
+  });
 });

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from app.domains.matching.application.profile_matching_reader import CandidateSummary
 
 _MAX_INTEREST_SCORE: int = 60
