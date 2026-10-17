@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ArrowRight, Flame, MessageCircle, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import AppLayout from "@/layouts/AppLayout";
@@ -17,11 +18,15 @@ function greeting() {
 export default function DashboardPage() {
   const { user, loading } = useUser();
   const navigate = useNavigate();
-  // ⚠️ Hooks MUST be called before any early return (React Rules of Hooks)
   const { data: partners, loading: partnersLoading } = useAsync(getPartners);
 
-  // While the user profile is being fetched, show a spinner
-  if (loading) {
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login" });
+    }
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="animate-spin h-8 w-8 text-primary" />
@@ -29,17 +34,10 @@ export default function DashboardPage() {
     );
   }
 
-  // If no user after loading, redirect to login
-  if (!user) {
-    navigate({ to: "/login" });
-    return null;
-  }
-
-  // Backend returns full_name, mock data uses name — handle both
   const displayName = user.full_name || user.name || user.username || "User";
   const firstName = displayName.split(" ")[0];
-  const interests = user.interests || [];
-  const profileCompletion = user.profileCompletion ?? 50;
+  const interests = Array.isArray(user.interests) ? user.interests : [];
+  const profileCompletion = user.profileCompletion ?? 65;
 
   return (
     <AppLayout>
@@ -68,7 +66,9 @@ export default function DashboardPage() {
             <Link to="/interests" className="text-sm font-medium text-primary hover:underline">Edit</Link>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {interests.map((i) => <InterestChip key={i} label={i} />)}
+            {interests.map((i) => (
+              <InterestChip key={typeof i === "object" ? i.id || i.name : i} label={typeof i === "object" ? i.name : i} />
+            ))}
           </div>
         </section>
       )}

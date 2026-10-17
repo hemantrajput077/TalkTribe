@@ -88,8 +88,11 @@ class AuthService:
 
     # ── Login ────────────────────────────────────────────────────────────────
 
-    async def authenticate_user(self, username: str, password: str) -> User:
-        user = await self.get_user_by_username(username)
+    async def authenticate_user(self, username_or_email: str, password: str) -> User:
+        if "@" in username_or_email:
+            user = await self.user_repo.get_by_email(username_or_email.lower())
+        else:
+            user = await self.get_user_by_username(username_or_email)
 
         # Constant-time path even when user doesn't exist (prevents timing attacks).
         dummy_hash = "$2b$12$notarealhashjustpadding....................."

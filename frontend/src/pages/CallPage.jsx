@@ -6,7 +6,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { getPartnerById } from "@/services/api";
 import { useUser } from "@/context/UserContext";
 
-// Visual-only call screen. Video streams will be attached here later.
+// Visual call screen.
 export default function CallPage({ id }) {
   const navigate = useNavigate();
   const { user } = useUser();
@@ -20,13 +20,15 @@ export default function CallPage({ id }) {
     const t = setTimeout(() => setStatus("Connected"), 1800);
     return () => clearTimeout(t);
   }, []);
+
   useEffect(() => {
     if (status !== "Connected") return;
     const t = setInterval(() => setSecs((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, [status]);
 
-  const name = partner?.name || "Partner";
+  const name = partner?.name || partner?.display_name || "Partner";
+  const myName = user?.full_name || user?.name || user?.username || "You";
   const time = `${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`;
   const ctrl = "flex h-14 w-14 items-center justify-center rounded-full transition hover:scale-105";
 
@@ -47,18 +49,32 @@ export default function CallPage({ id }) {
       </header>
 
       <div className="absolute bottom-32 right-5 z-10 flex h-44 w-32 items-center justify-center overflow-hidden rounded-2xl border border-call-foreground/15 bg-call-foreground/10 backdrop-blur sm:h-56 sm:w-40">
-        {cam ? <Avatar name={user.name} size="lg" /> : <VideoOff className="h-6 w-6 opacity-60" />}
+        {cam ? <Avatar name={myName} size="lg" /> : <VideoOff className="h-6 w-6 opacity-60" />}
         <span className="absolute bottom-2 left-2 text-[11px] opacity-80">You</span>
       </div>
 
       <div className="relative z-10 mt-auto flex items-center justify-center gap-4 p-8">
-        <button onClick={() => setMic((m) => !m)} aria-label={mic ? "Mute microphone" : "Unmute microphone"} aria-pressed={!mic} className={`${ctrl} ${mic ? "bg-call-foreground/15" : "bg-call-foreground text-call"}`}>
+        <button
+          onClick={() => setMic((m) => !m)}
+          aria-label={mic ? "Mute microphone" : "Unmute microphone"}
+          aria-pressed={!mic}
+          className={`${ctrl} ${mic ? "bg-call-foreground/15" : "bg-call-foreground text-call"}`}
+        >
           {mic ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
         </button>
-        <button onClick={() => setCam((c) => !c)} aria-label={cam ? "Turn camera off" : "Turn camera on"} aria-pressed={!cam} className={`${ctrl} ${cam ? "bg-call-foreground/15" : "bg-call-foreground text-call"}`}>
+        <button
+          onClick={() => setCam((c) => !c)}
+          aria-label={cam ? "Turn camera off" : "Turn camera on"}
+          aria-pressed={!cam}
+          className={`${ctrl} ${cam ? "bg-call-foreground/15" : "bg-call-foreground text-call"}`}
+        >
           {cam ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
         </button>
-        <button onClick={() => navigate({ to: "/conversations" })} aria-label="End call" className={`${ctrl} h-16 w-16 bg-destructive text-destructive-foreground`}>
+        <button
+          onClick={() => navigate({ to: "/conversations" })}
+          aria-label="End call"
+          className={`${ctrl} h-16 w-16 bg-destructive text-destructive-foreground`}
+        >
           <PhoneOff className="h-7 w-7" />
         </button>
       </div>

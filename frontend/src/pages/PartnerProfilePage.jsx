@@ -27,8 +27,23 @@ export default function PartnerProfilePage({ id }) {
       </AppLayout>
     );
 
-  const shared = partner.interests.filter((i) => user.interests.includes(i));
-  const first = partner.name.split(" ")[0];
+  const safePartnerInterests = Array.isArray(partner.interests)
+    ? partner.interests
+    : Array.isArray(partner.shared_interests)
+    ? partner.shared_interests
+    : [];
+
+  const safeUserInterests = Array.isArray(user?.interests)
+    ? user.interests.map((i) => (typeof i === "object" ? i.name : i))
+    : [];
+
+  const shared = safePartnerInterests.filter((i) => {
+    const label = typeof i === "object" ? i.name : i;
+    return safeUserInterests.includes(label);
+  });
+
+  const partnerName = partner.name || partner.display_name || "Partner";
+  const first = partnerName.split(" ")[0];
 
   return (
     <AppLayout>
@@ -61,20 +76,30 @@ export default function PartnerProfilePage({ id }) {
         <section className="card-surface p-6">
           <h2 className="text-lg font-bold">Languages</h2>
           <div className="mt-4 space-y-3">
-            <InfoTile label="Native language" value={partner.nativeLanguage} />
-            <InfoTile label="English proficiency" value={partner.englishLevel} />
-            <InfoTile label="Learning language" value={partner.learningLanguage} />
+            <InfoTile label="Native language" value={partner.nativeLanguage || "English"} />
+            <InfoTile label="English proficiency" value={partner.englishLevel || partner.proficiency_level || "Intermediate"} />
+            <InfoTile label="Learning language" value={partner.learningLanguage || "Spanish"} />
           </div>
         </section>
         <section className="card-surface p-6 lg:col-span-2">
           <h2 className="text-lg font-bold">Shared interests</h2>
           <p className="text-sm text-muted-foreground">Great conversation starters with {first}.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {shared.length ? shared.map((i) => <InterestChip key={i} label={i} shared />) : <p className="text-sm text-muted-foreground">No shared interests yet.</p>}
+            {shared.length ? (
+              shared.map((i) => {
+                const label = typeof i === "object" ? i.name : i;
+                return <InterestChip key={label} label={label} shared />;
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground">No shared interests yet.</p>
+            )}
           </div>
           <h2 className="mt-7 text-lg font-bold">All interests</h2>
           <div className="mt-3 flex flex-wrap gap-2">
-            {partner.interests.map((i) => <InterestChip key={i} label={i} />)}
+            {safePartnerInterests.map((i) => {
+              const label = typeof i === "object" ? i.name : i;
+              return <InterestChip key={label} label={label} />;
+            })}
           </div>
         </section>
       </div>

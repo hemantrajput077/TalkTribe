@@ -8,9 +8,8 @@ import { Select } from "@/components/tt/Input";
 import { CardSkeleton, EmptyState } from "@/components/tt/States";
 import { useUser } from "@/context/UserContext";
 import { useAsync } from "@/hooks/useAsync";
-import { getPartners } from "@/services/api";
+import { getPartners, getInterests } from "@/services/api";
 import { PROFICIENCY_LEVELS, PROFESSIONS } from "@/data/mockData";
-import { getInterests } from "@/services/api";
 
 export default function PartnersPage() {
   const { user } = useUser();
@@ -22,21 +21,38 @@ export default function PartnersPage() {
   const [level, setLevel] = useState("Any level");
   const [profession, setProfession] = useState("Any profession");
 
-  // Local UI filtering on mock data. Later these values become query params for the API.
   const results = useMemo(() => {
     if (!partners) return [];
-    return partners.filter(
-      (p) =>
-        (p.name + p.profession + p.nativeLanguage).toLowerCase().includes(query.toLowerCase()) &&
-        (selectedInterests.length === 0 || selectedInterests.some((i) => p.interests.includes(i))) &&
-        (level === "Any level" || p.englishLevel === level) &&
-        (profession === "Any profession" || p.profession === profession),
-    );
+    return partners.filter((p) => {
+      const pName = p.name || p.display_name || "";
+      const pProf = p.profession || "";
+      const pLang = p.nativeLanguage || "";
+      const pInterests = Array.isArray(p.interests) ? p.interests : (p.shared_interests || []);
+      const pLevel = p.englishLevel || p.proficiency_level || "";
+
+      const matchesQuery = (pName + " " + pProf + " " + pLang).toLowerCase().includes(query.toLowerCase());
+      const matchesInterests =
+        selectedInterests.length === 0 ||
+        selectedInterests.some((i) => pInterests.includes(i));
+      const matchesLevel = level === "Any level" || pLevel === level;
+      const matchesProf = profession === "Any profession" || pProf === profession;
+
+      return matchesQuery && matchesInterests && matchesLevel && matchesProf;
+    });
   }, [partners, query, selectedInterests, level, profession]);
 
-  const activeCount = selectedInterests.length + (level !== "Any level") + (profession !== "Any profession");
-  const clear = () => { setSelectedInterests([]); setLevel("Any level"); setProfession("Any profession"); setQuery(""); };
-  const toggle = (i) => setSelectedInterests((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
+  const activeCount = selectedInterests.length + (level !== "Any level" ? 1 : 0) + (profession !== "Any profession" ? 1 : 0);
+  const clear = () => {
+    setSelectedInterests([]);
+    setLevel("Any level");
+    setProfession("Any profession");
+    setQuery("");
+  };
+
+  const toggle = (label) =>
+    setSelectedInterests((s) => (s.includes(label) ? s.filter((x) => x !== label) : [...s, label]));
+
+  const myInterestsList = Array.isArray(user?.interests) ? user.interests : [];
 
   return (
     <AppLayout>
@@ -54,10 +70,17 @@ export default function PartnersPage() {
             className="h-12 w-full rounded-xl border border-input bg-card pl-11 pr-4 text-sm shadow-soft placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
           />
         </div>
-        <Button variant={showFilters ? "secondary" : "outline"} className="h-12" onClick={() => setShowFilters((s) => !s)} aria-expanded={showFilters}>
+        <Button
+          variant={showFilters ? "secondary" : "outline"}
+          className="h-12"
+          onClick={() => setShowFilters((s) => !s)}
+          aria-expanded={showFilters}
+        >
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Filters</span>
-          {activeCount > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeCount}</span>}
+          {activeCount > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">{activeCount}</span>
+          )}
         </Button>
       </div>
 
@@ -66,15 +89,42 @@ export default function PartnersPage() {
           <div>
             <p className="mb-2 text-sm font-medium">Interests</p>
             <div className="flex flex-wrap gap-2">
-              {interestsLoading ? <p>Loading interests…</p> : (allInterests || []).map((i) => <InterestChip key={i} label={i} size="sm" selected={selectedInterests.includes(i)} onClick={() => toggle(i)} />)}
+              {interestsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading interests…</p>
+              ) : (
+                (allInterests || []).map((i) => {
+                  const label = typeof i === "object" ? i.name : i;
+                  return (
+                    <InterestChip
+                      key={typeof i === "object" ? i.id || i.name : i}
+                      label={label}
+                      size="sm"
+                      selected={selectedInterests.includes(label)}
+                      onClick={() => toggle(label)}
+                    />
+                  );
+                })
+              )}
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select label="English proficiency" value={level} onChange={(e) => setLevel(e.target.value)} options={["Any level", ...PROFICIENCY_LEVELS]} />
-            <Select label="Profession" value={profession} onChange={(e) => setProfession(e.target.value)} options={["Any profession", ...PROFESSIONS]} />
+            <Select
+              label="English proficiency"
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              options={["Any level", ...PROFICIENCY_LEVELS]}
+            />
+            <Select
+              label="Profession"
+              value={profession}
+              onChange={(e) => setProfession(e.target.value)}
+              options={["Any profession", ...PROFESSIONS]}
+            />
           </div>
           <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={clear}><X className="h-4 w-4" /> Clear all</Button>
+            <Button variant="ghost" size="sm" onClick={clear}>
+              <X className="h-4 w-4" /> Clear all
+            </Button>
           </div>
         </div>
       )}
@@ -84,10 +134,18 @@ export default function PartnersPage() {
       <div className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)
-          : results.map((p) => <PartnerCard key={p.id} partner={p} myInterests={user.interests} />)}
+          : results.map((p) => (
+              <PartnerCard key={p.id} partner={p} myInterests={myInterestsList} />
+            ))}
       </div>
+
       {!loading && results.length === 0 && (
-        <EmptyState icon={UserX} title="No partners match" description="Try removing a filter or searching for something else." action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
+        <EmptyState
+          icon={UserX}
+          title="No partners match"
+          description="Try removing a filter or searching for something else."
+          action={<Button variant="outline" onClick={clear}>Clear filters</Button>}
+        />
       )}
     </AppLayout>
   );

@@ -104,17 +104,29 @@ async def put_my_languages(
     )
 
 
+@router.get(
+    "",
+    response_model=list[PeerProfileResponse],
+    summary="List active community learners",
+)
+async def list_profiles(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+) -> list[PeerProfileResponse]:
+    svc = ProfileService(db)
+    return await svc.list_active_profiles(limit=limit)
+
+
 @router.get("/{user_id}", response_model=PeerProfileResponse, summary="View another user's profile")
 async def get_safe_profile(
     user_id: int = Path(..., title="The ID of the user whose profile to retrieve"),
-    auth: AuthenticatedIdentity = Depends(get_current_identity),
     db: AsyncSession = Depends(get_db),
 ):
     svc = ProfileService(db)
-    profile = await svc.get_safe_profile(user_id)
+    profile = await svc.get_safe_profile_full(user_id)
     if profile is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="PROFILE_NOT_FOUND",
         ) from None
-    return PeerProfileResponse.model_validate(profile)
+    return profile

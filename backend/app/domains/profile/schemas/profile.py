@@ -30,7 +30,12 @@ class PeerProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     user_id: int
-    bio: str | None
-    profession: str | None
-    location: str | None
-    avatar_url: str | None
+    name: str | None = None
+    bio: str | None = None
+    profession: str | None = None
+    location: str | None = None
+    avatar_url: str | None = None
+    native_language: str | None = None
+    english_level: str | None = None
+    learning_language: str | None = None
+    interests: list[str] = []
