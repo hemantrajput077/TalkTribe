@@ -16,6 +16,8 @@ htmlcov/
 # Node
 node_modules/
 dist/
+.output/
+.wrangler/
 .npm
 .eslintcache
 

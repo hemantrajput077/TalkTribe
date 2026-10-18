@@ -3,6 +3,7 @@ Profile routes.
 
   GET  /profiles/me           → return the authenticated user's own profile (lazy-create if missing)
   PATCH /profiles/me          → update the authenticated user's own profile
+  GET  /profiles/me/languages → return the authenticated user's full language configuration
   PUT  /profiles/me/languages → replace the authenticated user's full language configuration
 """
 
@@ -18,6 +19,7 @@ from app.domains.profile.schemas.user_language import (
     PutLanguagesRequest,
     PutLanguagesResponse,
     UserLanguageOut,
+    UserLanguagesResponse,
 )
 from app.infrastructure.database.dependencies import get_db
 
@@ -67,6 +69,22 @@ async def get_profile_by_id(
     svc = ProfileService(db)
     profile = await svc.get_profile_by_id(profile_id)
     return ProfileResponse.model_validate(profile)
+
+
+@router.get(
+    "/me/languages",
+    response_model=UserLanguagesResponse,
+    summary="Get the authenticated user's language configuration",
+)
+async def get_my_languages(
+    identity: AuthenticatedIdentity = Depends(get_current_identity),
+    db: AsyncSession = Depends(get_db),
+) -> UserLanguagesResponse:
+    svc = UserLanguageService(db)
+    user_languages = await svc.get_user_languages(identity.user_id)
+    return UserLanguagesResponse(
+        languages=[UserLanguageOut.model_validate(ul) for ul in user_languages]
+    )
 
 
 @router.put(
